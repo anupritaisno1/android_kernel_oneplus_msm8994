@@ -658,6 +658,7 @@ static int vfp_hotplug(struct notifier_block *b, unsigned long action,
 	return NOTIFY_OK;
 }
 
+<<<<<<< HEAD
 #ifdef CONFIG_PROC_FS
 static int vfp_bounce_show(struct seq_file *m, void *v)
 {
@@ -678,6 +679,8 @@ static const struct file_operations vfp_bounce_fops = {
 };
 #endif
 
+=======
+>>>>>>> 7c8865cc8b5a... ARM: add support for kernel mode NEON
 #ifdef CONFIG_KERNEL_MODE_NEON
 
 /*
