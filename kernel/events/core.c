@@ -3340,7 +3340,8 @@ static void perf_remove_from_owner(struct perf_event *event)
 		 * However we can safely take this lock because its the child
 		 * ctx->mutex.
 		 */
-		mutex_lock_nested(&owner->perf_event_mutex, SINGLE_DEPTH_NESTING);
+		mutex_lock_nested(&owner->perf_event_mutex,
+					SINGLE_DEPTH_NESTING);
 
 		/*
 		 * We have to re-check the event->owner field, if it is cleared
@@ -3492,7 +3493,6 @@ static int perf_event_read_group(struct perf_event *event,
 		ret += size;
 	}
 
-
 	return ret;
 }
 
@@ -3600,6 +3600,7 @@ static void perf_event_for_each_child(struct perf_event *event,
 	struct perf_event *child;
 
 	WARN_ON_ONCE(event->ctx->parent_ctx);
+
 	mutex_lock(&event->child_mutex);
 	func(event);
 	list_for_each_entry(child, &event->child_list, child_list)
@@ -3675,7 +3676,8 @@ static int perf_event_set_output(struct perf_event *event,
 				 struct perf_event *output_event);
 static int perf_event_set_filter(struct perf_event *event, void __user *arg);
 
-static long _perf_ioctl(struct perf_event *event, unsigned int cmd, unsigned long arg)
+static long _perf_ioctl(struct perf_event *event, unsigned int cmd,
+			unsigned long arg)
 {
 	void (*func)(struct perf_event *);
 	u32 flags = arg;
@@ -3732,15 +3734,15 @@ static long _perf_ioctl(struct perf_event *event, unsigned int cmd, unsigned lon
 
 static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	struct perf_event *event = file->private_data;
-	struct perf_event_context *ctx;
-	long ret;
+        struct perf_event *event = file->private_data;
+        struct perf_event_context *ctx;
+        long ret;
 
-	ctx = perf_event_ctx_lock(event);
-	ret = _perf_ioctl(event, cmd, arg);
-	perf_event_ctx_unlock(event, ctx);
+        ctx = perf_event_ctx_lock(event);
+        ret = _perf_ioctl(event, cmd, arg);
+        perf_event_ctx_unlock(event, ctx);
 
-	return ret;
+        return ret;
 }
 
 #ifdef CONFIG_COMPAT
