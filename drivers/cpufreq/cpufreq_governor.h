@@ -193,6 +193,8 @@ struct cs_dbs_tuners {
 	unsigned int twostep_counter;
 	u64 twostep_time;
 	unsigned int sleep_depth;
+	unsigned int boost_enabled;
+	unsigned int boost_count;
 };
 
 /* Common Governor data across policies */
