@@ -375,6 +375,13 @@ int __ref cpu_down(unsigned int cpu)
 
 	cpu_maps_update_begin();
 
+	// AP: Avoid core 0 & 4 from going down 
+	if ((cpu == 0) && (cpu >=4))
+	{
+		err = -EBUSY;
+		goto out;
+	}
+
 	if (cpu_hotplug_disabled) {
 		err = -EBUSY;
 		goto out;
