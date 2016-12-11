@@ -86,6 +86,13 @@ static int jfs_set_acl(tid_t tid, struct inode *inode, int type,
 	switch(type) {
 		case ACL_TYPE_ACCESS:
 			ea_name = POSIX_ACL_XATTR_ACCESS;
+			if (acl) {
+			rc = posix_acl_update_mode(inode, &inode->i_mode, &acl);
+			if (rc)
+				return rc;
+			inode->i_ctime = CURRENT_TIME;
+			mark_inode_dirty(inode);
+			}
 			break;
 		case ACL_TYPE_DEFAULT:
 			ea_name = POSIX_ACL_XATTR_DEFAULT;
