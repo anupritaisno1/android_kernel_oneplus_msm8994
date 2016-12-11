@@ -423,8 +423,6 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
    /* Initialize the timer module */
    vos_timer_module_init();
 
-   vos_wdthread_init_timer_work(vos_process_wd_timer);
-
    /* Initialize bug reporting structure */
    vos_init_log_completion();
 
@@ -2101,7 +2099,6 @@ vos_fetch_tl_cfg_parms
 VOS_STATUS vos_shutdown(v_CONTEXT_t vosContext)
 {
   VOS_STATUS vosStatus;
-  tpAniSirGlobal pMac = (((pVosContextType)vosContext)->pMACContext);
 
   vosStatus = WLANTL_Close(vosContext);
   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -2117,16 +2114,6 @@ VOS_STATUS vos_shutdown(v_CONTEXT_t vosContext)
      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
          "%s: Failed to close SME", __func__);
      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
-  }
-
-  /* CAC timer will be initiated and started only when SAP starts on
-  * DFS channel and it will be stopped and destroyed immediately once the
-  * radar detected or timedout. So as per design CAC timer should be
-  * destroyed after stop.*/
-  if (pMac->sap.SapDfsInfo.is_dfs_cac_timer_running) {
-     vos_timer_stop(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
-     pMac->sap.SapDfsInfo.is_dfs_cac_timer_running = 0;
-     vos_timer_destroy(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
   }
 
   vosStatus = macClose( ((pVosContextType)vosContext)->pMACContext);
@@ -3084,4 +3071,27 @@ int vos_set_radio_index(int radio_index)
 void vos_svc_fw_shutdown_ind(struct device *dev)
 {
 	hdd_svc_fw_shutdown_ind(dev);
+}
+
+v_U64_t vos_get_monotonic_boottime_ns(void)
+{
+	struct timespec ts;
+
+	ktime_get_ts(&ts);
+	return timespec_to_ns(&ts);
+}
+
+/**
+ * vos_do_div() - wrapper function for kernel macro(do_div).
+ *
+ * @dividend: Dividend value
+ * @divisor : Divisor value
+ *
+ * Return: Quotient
+ */
+uint64_t vos_do_div(uint64_t dividend, uint32_t divisor)
+{
+	do_div(dividend, divisor);
+	/*do_div macro updates dividend with Quotient of dividend/divisor */
+	return dividend;
 }

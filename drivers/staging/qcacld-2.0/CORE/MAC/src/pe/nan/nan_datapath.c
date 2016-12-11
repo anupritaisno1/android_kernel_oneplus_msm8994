@@ -197,7 +197,8 @@ static VOS_STATUS lim_ndp_responder_rsp_handler(tpAniSirGlobal mac_ctx,
 		goto responder_rsp;
 	}
 
-	if (VOS_STATUS_SUCCESS == rsp_ind->status) {
+	if (VOS_STATUS_SUCCESS == rsp_ind->status &&
+	    rsp_ind->create_peer == true) {
 		ret_val = lim_add_ndi_peer(mac_ctx, rsp_ind->vdev_id,
 				rsp_ind->peer_mac_addr);
 		if (VOS_STATUS_SUCCESS != ret_val) {
@@ -729,6 +730,7 @@ void lim_process_ndi_mlm_add_bss_rsp(tpAniSirGlobal mac_ctx, tpSirMsgQ lim_msgq,
 		session_entry->bssIdx = (uint8_t) add_bss_params->bssIdx;
 		session_entry->limSystemRole = eLIM_NDI_ROLE;
 		session_entry->statypeForBss = STA_ENTRY_SELF;
+		session_entry->staId = add_bss_params->staContext.staIdx;
 		/* Apply previously set configuration at HW */
 		limApplyConfiguration(mac_ctx, session_entry);
 		mlm_start_cnf.resultCode = eSIR_SME_SUCCESS;

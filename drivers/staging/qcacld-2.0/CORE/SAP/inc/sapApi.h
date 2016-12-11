@@ -101,7 +101,14 @@ when           who                what, where, why
 #define       MAX_TEXT_SIZE                32
 
 #define       MAX_CHANNEL_LIST_LEN         256
-#define       VOS_MAX_NO_OF_SAP_MODE       2 // max # of SAP
+/*
+ * max # of SAP
+ */
+#ifdef WLAN_4SAP_CONCURRENCY
+#define       VOS_MAX_NO_OF_SAP_MODE       4
+#else
+#define       VOS_MAX_NO_OF_SAP_MODE       2
+#endif
 #define       SAP_MAX_NUM_SESSION          5
 #define       SAP_MAX_OBSS_STA_CNT         1 // max # of OBSS STA
 
@@ -182,9 +189,7 @@ typedef enum {
     eSAP_DFS_NOL_GET,  /* Event sent when user need to get the DFS NOL from CNSS */
     eSAP_DFS_NOL_SET,  /* Event sent when user need to set the DFS NOL to CNSS */
     eSAP_DFS_NO_AVAILABLE_CHANNEL, /* No ch available after DFS RADAR detect */
-#ifdef FEATURE_WLAN_AP_AP_ACS_OPTIMIZE
     eSAP_ACS_SCAN_SUCCESS_EVENT,
-#endif
     eSAP_ACS_CHANNEL_SELECTED,
     eSAP_ECSA_CHANGE_CHAN_IND,
 } eSapHddEvent;
@@ -259,6 +264,7 @@ typedef struct sap_StationAssocIndication_s {
     eCsrEncryptionType negotiatedUCEncryptionType;
     eCsrEncryptionType negotiatedMCEncryptionType;
     tANI_BOOLEAN fAuthRequired;
+    uint8_t      ecsa_capable;
 } tSap_StationAssocIndication;
 
 typedef struct sap_StationAssocReassocCompleteEvent_s {
@@ -279,6 +285,7 @@ typedef struct sap_StationAssocReassocCompleteEvent_s {
     tANI_U8*     assocRespPtr;
     tANI_U8      timingMeasCap;
     tSirSmeChanInfo chan_info;
+    uint8_t      ecsa_capable;
 } tSap_StationAssocReassocCompleteEvent;
 
 typedef struct sap_StationDisassocCompleteEvent_s {
@@ -380,6 +387,18 @@ typedef struct sap_ChSelected_s {
 } tSap_ChSelectedEvent;
 
 /**
+ * struct tsap_acs_scan_complete_event - acs scan complete event
+ * @status: status of acs scan
+ * @channellist: acs scan channels
+ * @num_of_channels: number of channels
+ */
+struct tsap_acs_scan_complete_event{
+    uint8_t status;
+    uint8_t *channellist;
+    uint8_t num_of_channels;
+};
+
+/**
  * struct sap_ch_change_ind - channel change indication
  * @new_chan: channel to change
  */
@@ -413,6 +432,7 @@ typedef struct sap_Event_s {
         tSap_DfsNolInfo                           sapDfsNolInfo;    /*eSAP_DFS_NOL_XXX */
         /*eSAP_ACS_CHANNEL_SELECTED */
         tSap_ChSelectedEvent                      sapChSelected;
+        struct tsap_acs_scan_complete_event       sap_acs_scan_comp;
         struct sap_ch_change_ind                  sap_chan_cng_ind;
     } sapevt;
 } tSap_Event, *tpSap_Event;
@@ -553,6 +573,11 @@ typedef struct sap_Config {
     uint8_t ampdu_size;
     tSirMacRateSet  supported_rates;
     tSirMacRateSet  extended_rates;
+    eCsrBand   target_band;
+    uint16_t  sub20_channelwidth;
+    /* beacon count before channel switch */
+    uint8_t          sap_chanswitch_beacon_cnt;
+    uint8_t          sap_chanswitch_mode;
 } tsap_Config_t;
 
 #ifdef FEATURE_WLAN_AP_AP_ACS_OPTIMIZE
@@ -663,6 +688,10 @@ typedef struct sSapDfsInfo
      */
     v_U8_t              disable_dfs_ch_switch;
     uint16_t            tx_leakage_threshold;
+    uint8_t             new_sub20_channelwidth;
+    /* beacon count before channel switch */
+    uint8_t            sap_ch_switch_beacon_cnt;
+    uint8_t            sap_ch_switch_mode;
 } tSapDfsInfo;
 
 typedef struct tagSapCtxList
@@ -2407,6 +2436,20 @@ VOS_STATUS wlansap_set_tx_leakage_threshold(tHalHandle hal,
 VOS_STATUS wlansap_get_chan_width(void *pvosctx,
 			uint32_t *pchanwidth);
 
+VOS_STATUS wlansap_set_invalid_session(v_PVOID_t pctx);
+
+#ifdef FEATURE_WLAN_SUB_20_MHZ
+VOS_STATUS
+WLANSAP_set_sub20_channelwidth_with_csa(
+	void *vos_ctx_ptr, uint32_t chan_width);
+#else
+static inline VOS_STATUS
+WLANSAP_set_sub20_channelwidth_with_csa(
+	void *vos_ctx_ptr, uint32_t chan_width)
+{
+	return VOS_STATUS_SUCCESS;
+}
+#endif
 #ifdef __cplusplus
  }
 #endif

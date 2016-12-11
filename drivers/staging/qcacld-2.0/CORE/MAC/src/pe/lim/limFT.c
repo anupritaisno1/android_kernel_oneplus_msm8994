@@ -336,16 +336,22 @@ void limPerformFTPreAuth(tpAniSirGlobal pMac, eHalStatus status,
                          tANI_U32 *data, tpPESession psessionEntry)
 {
     tSirMacAuthFrameBody authFrame;
+    tANI_U32 session_id;
+    eCsrAuthType auth_type;
 
     if (NULL == psessionEntry) {
         PELOGE(limLog(pMac, LOGE, FL("psessionEntry is NULL"));)
         return;
     }
 
+    session_id = psessionEntry->smeSessionId;
+    auth_type = pMac->roam.roamSession[session_id].connectedProfile.AuthType;
+
     if (psessionEntry->is11Rconnection &&
         psessionEntry->ftPEContext.pFTPreAuthReq) {
         /* Only 11r assoc has FT IEs */
-        if (psessionEntry->ftPEContext.pFTPreAuthReq->ft_ies_length == 0) {
+        if ((auth_type != eCSR_AUTH_TYPE_OPEN_SYSTEM) &&
+            (psessionEntry->ftPEContext.pFTPreAuthReq->ft_ies_length == 0)) {
             PELOGE(limLog( pMac, LOGE,
                            "%s: FTIEs for Auth Req Seq 1 is absent",
                            __func__);)
@@ -466,9 +472,9 @@ tSirRetStatus limFTPrepareAddBssReq( tpAniSirGlobal pMac,
 
     vos_mem_set((tANI_U8 *) pAddBssParams, sizeof( tAddBssParams ), 0);
 
-    limExtractApCapabilities( pMac,
+    limExtractApCapabilities(pMac,
         (tANI_U8 *) bssDescription->ieFields,
-        limGetIElenFromBssDescription( bssDescription ), pBeaconStruct );
+        GET_IE_LEN_IN_BSS(bssDescription->length), pBeaconStruct);
 
     if (pMac->lim.gLimProtectionControl !=
                                     WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE)
@@ -858,10 +864,10 @@ void limFillFTSession(tpAniSirGlobal pMac,
    pftSessionEntry->smeSessionId = psessionEntry->smeSessionId;
    pftSessionEntry->transactionId = 0;
 
-   limExtractApCapabilities( pMac,
-         (tANI_U8 *) pbssDescription->ieFields,
-         limGetIElenFromBssDescription( pbssDescription ),
-         pBeaconStruct );
+   limExtractApCapabilities(pMac,
+         (tANI_U8 *)pbssDescription->ieFields,
+         GET_IE_LEN_IN_BSS(pbssDescription->length),
+         pBeaconStruct);
 
    pftSessionEntry->rateSet.numRates = pBeaconStruct->supportedRates.numRates;
    vos_mem_copy(pftSessionEntry->rateSet.rate,
@@ -941,7 +947,7 @@ void limFillFTSession(tpAniSirGlobal pMac,
                                           pftSessionEntry->currentOperChannel );
    localPowerConstraint = regMax;
    limExtractApCapability( pMac, (tANI_U8 *) pbssDescription->ieFields,
-         limGetIElenFromBssDescription(pbssDescription),
+         GET_IE_LEN_IN_BSS(pbssDescription->length),
          &pftSessionEntry->limCurrentBssQosCaps,
          &pftSessionEntry->limCurrentBssPropCap,
          &currentBssUapsd , &localPowerConstraint, pftSessionEntry);

@@ -294,6 +294,9 @@ static const t_probeTime_dwellTime
 #define WMA_EXTSCAN_BURST_DURATION      150
 #endif
 
+#define WMA_CHAN_START_RESP         0
+#define WMA_CHAN_END_RESP           1
+
 typedef void (*txFailIndCallback)(u_int8_t *peer_mac, u_int8_t seqNo);
 
 typedef struct {
@@ -640,6 +643,7 @@ struct wma_txrx_node {
 
 	uint8_t wep_default_key_idx;
 	bool is_vdev_valid;
+	uint16_t channelwidth;
 
 };
 
@@ -931,6 +935,7 @@ typedef struct wma_handle {
 	vos_timer_t wma_fw_time_sync_timer;
 	struct sir_allowed_action_frames allowed_action_frames;
 	tSirAddonPsReq psSetting;
+	bool sub_20_support;
 }t_wma_handle, *tp_wma_handle;
 
 struct wma_target_cap {
@@ -1366,6 +1371,7 @@ struct wma_vdev_start_req {
 	bool is_half_rate;
 	bool is_quarter_rate;
 	u_int16_t beacon_tx_rate;
+	uint16_t channelwidth;
 };
 
 struct wma_set_key_params {
