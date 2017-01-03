@@ -48,12 +48,6 @@
 #include <linux/wakelock.h>
 #include <linux/input.h>
 
-#ifdef CONFIG_MSM_HOTPLUG
-#include <linux/msm_hotplug.h>
-#include <linux/workqueue.h>
-#endif
-
-
 #ifdef CONFIG_FB
 #include <linux/fb.h>
 #include <linux/notifier.h>
@@ -65,10 +59,6 @@
 #define FPC1020_RESET_HIGH1_US 100
 #define FPC1020_RESET_HIGH2_US 1250
 #define FPC_TTW_HOLD_TIME 1000
-
-#ifdef CONFIG_MSM_HOTPLUG
-extern void msm_hotplug_resume_timeout(void);
-#endif
 
 /* Unused key value to avoid interfering with active keys */
 #define KEY_FINGERPRINT 0x2ee
@@ -300,24 +290,16 @@ static DEVICE_ATTR(irq, S_IRUSR | S_IWUSR, irq_get, irq_ack);
 #ifdef VENDOR_EDIT //WayneChang, 2015/12/02, add for key to abs, simulate key in abs through virtual key system
 extern bool virtual_key_enable;
 #endif
-extern bool s1302_is_keypad_stopped(void);
 
 static ssize_t report_home_set(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct  fpc1020_data *fpc1020 = dev_get_drvdata(dev);
-
-	bool ignore_keypad;
-
-	if (s1302_is_keypad_stopped() || virtual_key_enable)
-		ignore_keypad = true;
-	else
-		ignore_keypad = false;
-
+        
 	if (!strncmp(buf, "down", strlen("down")))
 	{
 #ifdef VENDOR_EDIT //WayneChang, 2015/12/02, add for key to abs, simulate key in abs through virtual key system
-		if(!ignore_keypad){
+		if(!virtual_key_enable){
 	 		input_report_key(fpc1020->input_dev,
 							KEY_HOME, 1);
 			input_sync(fpc1020->input_dev);
@@ -327,7 +309,7 @@ static ssize_t report_home_set(struct device *dev,
 	else if (!strncmp(buf, "up", strlen("up")))
 	{
 #ifdef VENDOR_EDIT //WayneChang, 2015/12/02, add for key to abs, simulate key in abs through virtual key system
-		if(!ignore_keypad){
+		if(!virtual_key_enable){
 			input_report_key(fpc1020->input_dev,
 							KEY_HOME, 0);
 			input_sync(fpc1020->input_dev);
@@ -980,13 +962,6 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 	return 0;
 }
 #endif
-#ifdef CONFIG_MSM_HOTPLUG
-static void __cpuinit msm_hotplug_resume_call(struct work_struct *msm_hotplug_resume_call_work)
-{
-	msm_hotplug_resume_timeout();
-}
-static DECLARE_WORK(msm_hotplug_resume_call_work, msm_hotplug_resume_call);
-#endif
 
 static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 {
@@ -996,20 +971,11 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	/* Make sure 'wakeup_enabled' is updated before using it
 	** since this is interrupt context (other thread...) */
 	smp_rmb();
-
+/*
 	if (fpc1020->wakeup_enabled ) {
 		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
-#ifdef CONFIG_MSM_HOTPLUG
-		if (msm_enabled && msm_hotplug_scr_suspended &&
-		   !msm_hotplug_fingerprint_called) {
-			msm_hotplug_fingerprint_called = true;
-      		schedule_work(&msm_hotplug_resume_call_work);
-		}
-#endif
 	}
-
-
-
+*/
 	wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));//changhua add for KeyguardUpdateMonitor: fingerprint acquired, grabbing fp wakelock
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 
