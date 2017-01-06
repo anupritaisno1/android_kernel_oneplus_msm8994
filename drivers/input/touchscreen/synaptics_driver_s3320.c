@@ -155,8 +155,6 @@ struct test_header {
 #define BIT6 (0x1 << 6)
 #define BIT7 (0x1 << 7)
 
-#define IMPLEMENTED_FUNCTIONS	(BIT0 | BIT1)
-
 int LeftVee_gesture = 0; //">"
 int RightVee_gesture = 0; //"<"
 int DouSwip_gesture = 0; // "||"
@@ -172,8 +170,6 @@ int Down2UpSwip_gesture =0;//"down to up |"
 
 int Wgestrue_gesture =0;//"(W)"
 int Mgestrue_gesture =0;//"(M)"
-
-int DisableGestureHaptic = 0;
 
 #endif
 //ruanbanmao@BSP add for tp gesture 2015-05-06, end
@@ -215,11 +211,6 @@ static struct synaptics_ts_data *ts_g = NULL;
 static struct workqueue_struct *synaptics_wq = NULL;
 static struct workqueue_struct *synaptics_report = NULL;
 static struct proc_dir_entry *prEntry_tp = NULL;
-static struct proc_dir_entry *prEntry_sweep_wake_tap = NULL;
-static struct proc_dir_entry *prEntry_sweep_wake_tap_implemented = NULL;
-static struct input_dev * boeffla_syn_pwrdev;
-static DEFINE_MUTEX(boeffla_syn_pwrkeyworklock);
-void qpnp_hap_ignore_next_request(void);
 
 
 #ifdef SUPPORT_GESTURE
@@ -389,27 +380,6 @@ struct synaptics_optimize_data{
 	const struct i2c_device_id *dev_id;
 };
 static struct synaptics_optimize_data optimize_data;
-
-
-static void boeffla_syn_presspwr(struct work_struct * boeffla_syn_presspwr_work)
-{
-	if (!mutex_trylock(&boeffla_syn_pwrkeyworklock))
-		return;
-
-	input_event(boeffla_syn_pwrdev, EV_KEY, KEY_POWER, 1);
-	input_event(boeffla_syn_pwrdev, EV_SYN, 0, 0);
-	msleep(60);
-
-	input_event(boeffla_syn_pwrdev, EV_KEY, KEY_POWER, 0);
-	input_event(boeffla_syn_pwrdev, EV_SYN, 0, 0);
-	msleep(60);
-
-    mutex_unlock(&boeffla_syn_pwrkeyworklock);
-	return;
-}
-static DECLARE_WORK(boeffla_syn_presspwr_work, boeffla_syn_presspwr);
-
-
 static void synaptics_ts_probe_func(struct work_struct *w)
 {
 	struct i2c_client *client_optimize = optimize_data.client;
@@ -1255,40 +1225,12 @@ static void gesture_judge(struct synaptics_ts_data *ts)
 	if((gesture == DouTap && DouTap_gesture)||(gesture == RightVee && RightVee_gesture)\
         ||(gesture == LeftVee && LeftVee_gesture)||(gesture == UpVee && UpVee_gesture)\
         ||(gesture == Circle && Circle_gesture)||(gesture == DouSwip && DouSwip_gesture)){
-
-		// check if haptic feedback for gesture should be suppressed
-		if (DisableGestureHaptic)
-			qpnp_hap_ignore_next_request();
-
 		gesture_upload = gesture;
 		input_report_key(ts->input_dev, keyCode, 1);
 		input_sync(ts->input_dev);
 		input_report_key(ts->input_dev, keyCode, 0);
 		input_sync(ts->input_dev);
-	}
-    else if ((gesture == Left2RightSwip && Left2RightSwip_gesture)||(gesture == Right2LeftSwip && Right2LeftSwip_gesture)\
-			||(gesture == Up2DownSwip && Up2DownSwip_gesture)||(gesture == Down2UpSwip && Down2UpSwip_gesture))
-    {
-		// if user has double tap gesture enabled, we can still deliver haptic feedback also for swipe gestures (incl. proximity check)
-		// hence we check if this is the case and if user wants to receive haptic feedback
-		// if not, send power key
-		if (DouTap_gesture && !DisableGestureHaptic)
-		{
-			gesture = DouTap;
-			gesture_upload = gesture;
-			input_report_key(ts->input_dev, keyCode, 1);
-			input_sync(ts->input_dev);
-			input_report_key(ts->input_dev, keyCode, 0);
-			input_sync(ts->input_dev);
-		}
-		else
-		{
-			// press powerkey
-			schedule_work(&boeffla_syn_presspwr_work);
-		}
-	}
-	else
-	{
+	}else{
 
 		ret = i2c_smbus_read_i2c_block_data( ts->client, F12_2D_CTRL20, 3, &(reportbuf[0x0]) );
 		ret = reportbuf[2] & 0x20;
@@ -1521,8 +1463,7 @@ static ssize_t tp_gesture_write_func(struct file *file, const char __user *buffe
     DouTap_gesture = (buf[0] & BIT7)?1:0; //double tap
 
 	if(DouTap_gesture||Circle_gesture||UpVee_gesture||LeftVee_gesture\
-        ||RightVee_gesture||DouSwip_gesture\
-        ||Left2RightSwip_gesture||Right2LeftSwip_gesture||Down2UpSwip_gesture||Up2DownSwip_gesture)
+        ||RightVee_gesture||DouSwip_gesture)
 	{
 		ts->double_enable = 1;
 		syna_use_gesture = 1;
@@ -1536,60 +1477,6 @@ static ssize_t tp_gesture_write_func(struct file *file, const char __user *buffe
     //ruanbanmao@BSP add for tp gesture 2015-05-06, end
 	return count;
 }
-
-static ssize_t tp_sweep_wake_implemented_read_func(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
-{
-	int ret = 0;
-	char page[PAGESIZE];
-	ret = sprintf(page, "%d\n", IMPLEMENTED_FUNCTIONS);
-	ret = simple_read_from_buffer(user_buf, count, ppos, page, strlen(page));
-	return ret;
-}
-
-static ssize_t tp_sweep_wake_read_func(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
-{
-	int ret = 0;
-	char page[PAGESIZE];
-	ret = sprintf(page, "%d\n", Left2RightSwip_gesture + (DisableGestureHaptic * BIT1));
-	ret = simple_read_from_buffer(user_buf, count, ppos, page, strlen(page));
-	return ret;
-}
-
-static ssize_t tp_sweep_wake_write_func(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
-{
-	char buf[10];
-	struct synaptics_ts_data *ts = ts_g;
-
-	if( count > 2)
-		return count;
-	if( copy_from_user(buf, buffer, count) ){
-		printk(KERN_INFO "%s: read proc input error.\n", __func__);
-		return count;
-	}
-
-	Left2RightSwip_gesture = (buf[0] & BIT0) ? 1 : 0;
-	Right2LeftSwip_gesture = (buf[0] & BIT0) ? 1 : 0;
-	Up2DownSwip_gesture = (buf[0] & BIT0) ? 1 : 0;
-	Down2UpSwip_gesture = (buf[0] & BIT0) ? 1 : 0;
-
-	DisableGestureHaptic = (buf[0] & BIT1) ? 1 : 0;
-
-	if(DouTap_gesture||Circle_gesture||UpVee_gesture||LeftVee_gesture\
-        ||RightVee_gesture||DouSwip_gesture\
-        ||Left2RightSwip_gesture||Right2LeftSwip_gesture||Down2UpSwip_gesture||Up2DownSwip_gesture)
-	{
-		ts->double_enable = 1;
-		syna_use_gesture = 1;
-	}
-	else
-    {
-        ts->double_enable = 0;
-		syna_use_gesture = 0;
-    }
-
-	return count;
-}
-
 static ssize_t coordinate_proc_read_func(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
 {
 	int ret = 0;
@@ -1736,19 +1623,6 @@ static ssize_t flashlight_enable_write_func(struct file *file, const char __user
 static const struct file_operations tp_gesture_proc_fops = {
 	.write = tp_gesture_write_func,
 	.read =  tp_gesture_read_func,
-	.open = simple_open,
-	.owner = THIS_MODULE,
-};
-
-static const struct file_operations tp_sweep_wake_proc_fops = {
-	.write = tp_sweep_wake_write_func,
-	.read =  tp_sweep_wake_read_func,
-	.open = simple_open,
-	.owner = THIS_MODULE,
-};
-
-static const struct file_operations tp_sweep_wake_implemented_proc_fops = {
-	.read =  tp_sweep_wake_implemented_read_func,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
@@ -2846,18 +2720,6 @@ static int init_synaptics_proc(void)
 		printk(KERN_INFO"init_synaptics_proc: Couldn't create proc entry\n");
 	}
 
-	prEntry_sweep_wake_tap = proc_create( "sweep_wake_enable", 0666, prEntry_tp, &tp_sweep_wake_proc_fops);
-	if(prEntry_sweep_wake_tap == NULL){
-		ret = -ENOMEM;
-		printk(KERN_INFO"init_synaptics_proc: Couldn't create proc entry\n");
-	}
-
-	prEntry_sweep_wake_tap_implemented = proc_create( "sweep_wake_enable_implemented", 0666, prEntry_tp, &tp_sweep_wake_implemented_proc_fops);
-	if(prEntry_sweep_wake_tap_implemented == NULL){
-		ret = -ENOMEM;
-		printk(KERN_INFO"init_synaptics_proc: Couldn't create proc entry\n");
-	}
-
 	prEntry_tmp = proc_create("coordinate", 0444, prEntry_tp, &coordinate_proc_fops);
 	if(prEntry_tmp == NULL){
 		ret = -ENOMEM;
@@ -3934,32 +3796,11 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 
 static int __init tpd_driver_init(void)
 {
-	int rc = 0;
-
 	printk("Synaptics:%s is called\n", __func__);
 	if( i2c_add_driver(&tpd_i2c_driver)!= 0 ){
 		TPDTM_DMESG("unable to add i2c driver.\n");
 		return -1;
 	}
-
-	// allocate and register input device for sending power key events
-	boeffla_syn_pwrdev = input_allocate_device();
-	if (!boeffla_syn_pwrdev)
-	{
-		pr_err("Can't allocate suspend autotest power button\n");
-		return -EFAULT;
-	}
-
-	input_set_capability(boeffla_syn_pwrdev, EV_KEY, KEY_POWER);
-	boeffla_syn_pwrdev->name = "boeffla_syn_pwrkey";
-	boeffla_syn_pwrdev->phys = "boeffla_syn_pwrkey/input0";
-	rc = input_register_device(boeffla_syn_pwrdev);
-	if (rc)
-	{
-		pr_err("%s: input_register_device err=%d\n", __func__, rc);
-		return -EFAULT;
-	}
-
 	return 0;
 }
 
