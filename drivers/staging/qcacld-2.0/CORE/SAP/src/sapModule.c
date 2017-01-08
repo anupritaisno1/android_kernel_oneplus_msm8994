@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -654,6 +654,7 @@ WLANSAP_SetScanAcsChannelParams(tsap_Config_t *pConfig,
 #endif
     pSapCtx->scanBandPreference = pConfig->scanBandPreference;
     pSapCtx->acsBandSwitchThreshold = pConfig->acsBandSwitchThreshold;
+    pSapCtx->auto_channel_select_weight = pConfig->auto_channel_select_weight;
     pSapCtx->pUsrContext = pUsrContext;
     pSapCtx->enableOverLapCh = pConfig->enOverLapCh;
     /*
@@ -774,6 +775,8 @@ WLANSAP_StartBss
 #endif
         pSapCtx->scanBandPreference = pConfig->scanBandPreference;
         pSapCtx->acsBandSwitchThreshold = pConfig->acsBandSwitchThreshold;
+        pSapCtx->auto_channel_select_weight =
+            pConfig->auto_channel_select_weight;
         pSapCtx->pUsrContext = pUsrContext;
         pSapCtx->enableOverLapCh = pConfig->enOverLapCh;
         pSapCtx->acs_cfg = &pConfig->acs_cfg;
@@ -3852,6 +3855,26 @@ void WLANSAP_PopulateDelStaParams(const v_U8_t *mac,
                    pDelStaParams->reason_code, pDelStaParams->subtype,
                    MAC_ADDR_ARRAY(pDelStaParams->peerMacAddr));
 }
+
+#ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
+/**
+ * is_auto_channel_select() - is channel AUTO_CHANNEL_SELECT
+ * @p_vos_gctx: Pointer to ptSapContext
+ *
+ * Return: true on AUTO_CHANNEL_SELECT, false otherwise
+ */
+bool is_auto_channel_select(v_PVOID_t p_vos_gctx)
+{
+	ptSapContext sapcontext = VOS_GET_SAP_CB(p_vos_gctx);
+
+	if (NULL == sapcontext) {
+		VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+			"%s: Invalid SAP pointer", __func__);
+		return 0;
+	}
+	return sapcontext->channel == AUTO_CHANNEL_SELECT;
+}
+#endif
 
 /*==========================================================================
   FUNCTION    WLANSAP_ACS_CHSelect
