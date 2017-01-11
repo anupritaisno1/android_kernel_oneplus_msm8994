@@ -4,22 +4,3 @@ config HIMA_HOTPLUG
         default n
         help
           Generic cpu hotplugging driver for ARM SOCs
-config THUNDERPLUG_CONTROL
-	bool "Enable plugging down/up of cores using powersuspend"
-        default y
-	help
-	  This driver uses powersuspend to take down the cpu cores
-	  on a octa core device.
-
-
-config CLUSTER_PLUG
- bool "Enable cluster-plug cpu hotplug driver"
- default n
- help
-   CPU hotplug driver designed for ARM big.LITTLE systems where both the big and little CPUs are of the same type. On these systems, it preferable to normall use the big cluster, and only activate the little cluster for highly parallel loads. This hotplug implementation always keeps the big cluster online, and only activates the little cluster for heavy parallel loads.
-
-config ALUCARD_HOTPLUG
- 	bool "Enable alucard-hotplug cpu hotplug driver"
- 	default n
- 	help
- 	  Generic Alucard-hotplug cpu hotplug driver for ARM SOCs
