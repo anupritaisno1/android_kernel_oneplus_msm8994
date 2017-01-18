@@ -382,9 +382,7 @@ KBUILD_CFLAGS   := -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-delete-null-pointer-checks \
 		   -std=gnu89 -Wno-unused-const-variable -Wno-misleading-indentation \
            -Wno-memset-transposed-args  -Wno-bool-compare -Wno-logical-not-parentheses \
-		   -Wno-switch-bool \
-                   -Wno-error=switch-unreachable \
-                   -Wno-error=format-truncation
+		   -Wno-switch-bool
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
