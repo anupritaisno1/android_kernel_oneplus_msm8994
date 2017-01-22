@@ -1,3 +1,4 @@
+
 /*
  *  linux/arch/x86_64/entry.S
  *
@@ -1059,7 +1060,16 @@ restore_args:
 	RESTORE_ARGS 1,8,1
 
 irq_return:
+	/*
+	 * Are we returning to a stack segment from the LDT?  Note: in
+	 * 64-bit mode SS:RSP on the exception stack is always valid.
+	 */
+	testb $4,(SS-RIP)(%rsp)
+	jnz irq_return_ldt
+
+irq_return_iret:
 	INTERRUPT_RETURN
+	_ASM_EXTABLE(irq_return_iret, bad_iret)
 
 ENTRY(native_iret)
 	/*
@@ -1071,8 +1081,32 @@ ENTRY(native_iret)
 	jnz native_irq_return_ldt
 #endif
 
-.global native_irq_return_iret
-native_irq_return_iret:
+irq_return_ldt:
+	pushq_cfi %rax
+	pushq_cfi %rdi
+	SWAPGS
+	movq PER_CPU_VAR(espfix_waddr),%rdi
+	movq %rax,(0*8)(%rdi)	/* RAX */
+	movq (2*8)(%rsp),%rax	/* RIP */
+	movq %rax,(1*8)(%rdi)
+	movq (3*8)(%rsp),%rax	/* CS */
+	movq %rax,(2*8)(%rdi)
+	movq (4*8)(%rsp),%rax	/* RFLAGS */
+	movq %rax,(3*8)(%rdi)
+	movq (6*8)(%rsp),%rax	/* SS */
+	movq %rax,(5*8)(%rdi)
+	movq (5*8)(%rsp),%rax	/* RSP */
+	movq %rax,(4*8)(%rdi)
+	andl $0xffff0000,%eax
+	popq_cfi %rdi
+	orq PER_CPU_VAR(espfix_stack),%rax
+	SWAPGS
+	movq %rax,%rsp
+	popq_cfi %rax
+	jmp irq_return_iret
+
+	.section .fixup,"ax"
+bad_iret:
 	/*
 	 * This may fault.  Non-paranoid faults on return to userspace are
 	 * handled by fixup_bad_iret.  These include #SS, #GP, and #NP.
@@ -1153,6 +1187,38 @@ ENTRY(retint_kernel)
 #endif
 	CFI_ENDPROC
 END(common_interrupt)
+
+	/*
+	 * If IRET takes a fault on the espfix stack, then we
+	 * end up promoting it to a doublefault.  In that case,
+	 * modify the stack to make it look like we just entered
+	 * the #GP handler from user space, similar to bad_iret.
+	 */
+	ALIGN
+__do_double_fault:
+	XCPT_FRAME 1 RDI+8
+	movq RSP(%rdi),%rax		/* Trap on the espfix stack? */
+	sarq $PGDIR_SHIFT,%rax
+	cmpl $ESPFIX_PGD_ENTRY,%eax
+	jne do_double_fault		/* No, just deliver the fault */
+	cmpl $__KERNEL_CS,CS(%rdi)
+	jne do_double_fault
+	movq RIP(%rdi),%rax
+	cmpq $irq_return_iret,%rax
+#ifdef CONFIG_PARAVIRT
+	je 1f
+	cmpq $native_iret,%rax
+#endif
+	jne do_double_fault		/* This shouldn't happen... */
+1:
+	movq PER_CPU_VAR(kernel_stack),%rax
+	subq $(6*8-KERNEL_STACK_OFFSET),%rax	/* Reset to original stack */
+	movq %rax,RSP(%rdi)
+	movq $0,(%rax)			/* Missing (lost) #GP error code */
+	movq $general_protection,RIP(%rdi)
+	retq
+	CFI_ENDPROC
+END(__do_double_fault)
 
 /*
  * End of kprobes section
@@ -1322,7 +1388,7 @@ zeroentry overflow do_overflow
 zeroentry bounds do_bounds
 zeroentry invalid_op do_invalid_op
 zeroentry device_not_available do_device_not_available
-paranoiderrorentry double_fault do_double_fault
+paranoiderrorentry double_fault __do_double_fault
 zeroentry coprocessor_segment_overrun do_coprocessor_segment_overrun
 errorentry invalid_TSS do_invalid_TSS
 errorentry segment_not_present do_segment_not_present
@@ -1608,7 +1674,7 @@ error_sti:
  */
 error_kernelspace:
 	incl %ebx
-	leaq native_irq_return_iret(%rip),%rcx
+	leaq irq_return_iret(%rip),%rcx
 	cmpq %rcx,RIP+8(%rsp)
 	je error_bad_iret
 	movl %ecx,%eax	/* zero extend */
