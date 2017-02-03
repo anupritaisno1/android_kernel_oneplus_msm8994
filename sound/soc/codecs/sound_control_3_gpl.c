@@ -76,7 +76,7 @@ static ssize_t cam_mic_gain_show(struct kobject *kobj,
 {
         return sprintf(buf, "%u",
 		tomtom_read(fauxsound_codec_ptr,
-			TOMTOM_A_CDC_TX3_VOL_CTL_GAIN));
+			TOMTOM_A_CDC_TX6_VOL_CTL_GAIN));
 
 }
 
@@ -89,7 +89,7 @@ static ssize_t cam_mic_gain_store(struct kobject *kobj,
 
 	if (calc_checksum(lval, 0, chksum)) {
 		tomtom_write(fauxsound_codec_ptr,
-			TOMTOM_A_CDC_TX3_VOL_CTL_GAIN, lval);
+			TOMTOM_A_CDC_TX6_VOL_CTL_GAIN, lval);
 	}
 	return count;
 }
@@ -99,7 +99,7 @@ static ssize_t mic_gain_show(struct kobject *kobj,
 {
 	return sprintf(buf, "%u",
 		tomtom_read(fauxsound_codec_ptr,
-			TOMTOM_A_CDC_TX2_VOL_CTL_GAIN));
+			TOMTOM_A_CDC_TX7_VOL_CTL_GAIN));
 }
 
 static ssize_t mic_gain_store(struct kobject *kobj,
@@ -111,7 +111,7 @@ static ssize_t mic_gain_store(struct kobject *kobj,
 
 	if (calc_checksum(lval, 0, chksum)) {
 		tomtom_write(fauxsound_codec_ptr,
-			TOMTOM_A_CDC_TX2_VOL_CTL_GAIN, lval);
+			TOMTOM_A_CDC_TX7_VOL_CTL_GAIN, lval);
 	}
 	return count;
 
@@ -122,9 +122,9 @@ static ssize_t speaker_gain_show(struct kobject *kobj,
 {
         return sprintf(buf, "%u %u",
 			tomtom_read(fauxsound_codec_ptr,
-				TOMTOM_A_CDC_RX5_VOL_CTL_B2_CTL),
+				TOMTOM_A_CDC_RX7_VOL_CTL_B2_CTL),
 			tomtom_read(fauxsound_codec_ptr,
-				TOMTOM_A_CDC_RX5_VOL_CTL_B2_CTL));
+				TOMTOM_A_CDC_RX7_VOL_CTL_B2_CTL));
 
 }
 
@@ -137,9 +137,9 @@ static ssize_t speaker_gain_store(struct kobject *kobj,
 
 	if (calc_checksum(lval, rval, chksum)) {
 		tomtom_write(fauxsound_codec_ptr,
-			TOMTOM_A_CDC_RX5_VOL_CTL_B2_CTL, lval);
+			TOMTOM_A_CDC_RX7_VOL_CTL_B2_CTL, lval);
 		tomtom_write(fauxsound_codec_ptr,
-			TOMTOM_A_CDC_RX5_VOL_CTL_B2_CTL, rval);
+			TOMTOM_A_CDC_RX7_VOL_CTL_B2_CTL, rval);
 	}
 	return count;
 }
