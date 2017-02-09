@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1080,6 +1080,7 @@ sme_process_cmd:
                                         &pCommand->Link, LL_ACCESS_LOCK)) {
                                csrReleaseCommand(pMac, pCommand);
                             }
+                            pMac->max_power_cmd_pending = false;
                             break;
                         case eSmeCommandSetMaxTxPowerPerBand:
                             csrLLUnlock(&pMac->sme.smeCmdActiveList);
@@ -1092,6 +1093,7 @@ sme_process_cmd:
                                         &pCommand->Link, LL_ACCESS_LOCK)) {
                                csrReleaseCommand(pMac, pCommand);
                             }
+                            pMac->max_power_cmd_pending = false;
                             break;
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
@@ -3218,6 +3220,12 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                if (pMac->sme.pget_peer_info_ind_cb)
                    pMac->sme.pget_peer_info_ind_cb(pMsg->bodyptr,
                                         pMac->sme.pget_peer_info_cb_context);
+               vos_mem_free(pMsg->bodyptr);
+               break;
+          case eWNI_SME_GET_PEER_INFO_EXT_IND:
+               if (pMac->sme.pget_peer_info_ext_ind_cb)
+                   pMac->sme.pget_peer_info_ext_ind_cb(pMsg->bodyptr,
+                       pMac->sme.pget_peer_info_ext_cb_context);
                vos_mem_free(pMsg->bodyptr);
                break;
           case eWNI_SME_CSA_OFFLOAD_EVENT:
@@ -9766,6 +9774,12 @@ eHalStatus sme_SetMaxTxPowerPerBand(eCsrBand band, v_S7_t dB,
 	tSmeCmd *set_max_tx_pwr_per_band;
 	tpAniSirGlobal mac_ctx = PMAC_STRUCT(hal);
 
+        if (mac_ctx->max_power_cmd_pending) {
+           smsLog(mac_ctx, LOG1,
+                 FL("set max tx power already in progress"));
+           return eHAL_STATUS_RESOURCES;
+        }
+
 	smsLog(mac_ctx, LOG1,
 		  FL("band : %d power %d dB"),
 		  band, dB);
@@ -9783,6 +9797,7 @@ eHalStatus sme_SetMaxTxPowerPerBand(eCsrBand band, v_S7_t dB,
 				set_tx_max_pwr_per_band.band = band;
 			set_max_tx_pwr_per_band->u.
 				set_tx_max_pwr_per_band.power = dB;
+                        mac_ctx->max_power_cmd_pending = true;
 			status = csrQueueSmeCommand(mac_ctx,
 						set_max_tx_pwr_per_band,
 						eANI_BOOLEAN_TRUE);
@@ -9792,6 +9807,7 @@ eHalStatus sme_SetMaxTxPowerPerBand(eCsrBand band, v_S7_t dB,
 						status);
 				csrReleaseCommand(mac_ctx,
 						set_max_tx_pwr_per_band);
+                                mac_ctx->max_power_cmd_pending = false;
 			}
 		} else {
 			smsLog(mac_ctx, LOGE,
@@ -9823,6 +9839,12 @@ eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr bssid,
 	eHalStatus status = eHAL_STATUS_SUCCESS;
 	tSmeCmd *set_max_tx_pwr;
 
+        if (mac_ptr->max_power_cmd_pending) {
+           smsLog(mac_ptr, LOG1,
+                 FL("set max tx power already in progress"));
+           return eHAL_STATUS_RESOURCES;
+        }
+
 	MTRACE(vos_trace(VOS_MODULE_ID_SME,
 		TRACE_CODE_SME_RX_HDD_SET_MAXTXPOW, NO_SESSION, 0));
 	smsLog(mac_ptr, LOG1,
@@ -9839,6 +9861,7 @@ eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr bssid,
 			vos_mem_copy(set_max_tx_pwr->u.set_tx_max_pwr.self_sta_mac_addr,
 				self_mac_addr, SIR_MAC_ADDR_LENGTH);
 			set_max_tx_pwr->u.set_tx_max_pwr.power = db;
+                        mac_ptr->max_power_cmd_pending = true;
 			status = csrQueueSmeCommand(mac_ptr, set_max_tx_pwr,
 							eANI_BOOLEAN_TRUE);
 			if (!HAL_STATUS_SUCCESS(status)) {
@@ -9846,6 +9869,7 @@ eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr bssid,
 					FL("fail to send msg status = %d"),
 									status);
 				csrReleaseCommandScan(mac_ptr, set_max_tx_pwr);
+                                mac_ptr->max_power_cmd_pending = false;
 			}
 		}
 		else
@@ -12574,6 +12598,67 @@ eHalStatus sme_get_peer_info(tHalHandle hal, struct sir_peer_info_req req,
 		if (!VOS_IS_STATUS_SUCCESS(vosstatus)) {
 			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
 				"%s: Post get peer info msg fail", __func__);
+			vos_mem_free(vosmessage.bodyptr);
+			status = eHAL_STATUS_FAILURE;
+		}
+		sme_ReleaseGlobalLock(&mac->sme);
+	}
+	return status;
+}
+
+/**
+ * sme_get_peer_info_ext() - get info for remote peer
+ * @hal: hal interface
+ * @req: get peer info request pointer
+ * @context: event handle context
+ * @callbackfn: callback function pointer
+ *
+ * This function will send WDA_GET_PEER_INFO_EXT to WMA
+ *
+ * Return: 0 on success, otherwise error value
+ */
+eHalStatus sme_get_peer_info_ext(tHalHandle hal,
+		struct sir_peer_info_ext_req *req,
+		void *context,
+		void (*callbackfn)(struct sir_peer_info_ext_resp *param,
+			void *pcontext))
+{
+
+	eHalStatus          status    = eHAL_STATUS_SUCCESS;
+	VOS_STATUS          vosstatus = VOS_STATUS_SUCCESS;
+	tpAniSirGlobal      mac       = PMAC_STRUCT(hal);
+	vos_msg_t           vosmessage;
+
+	status = sme_AcquireGlobalLock(&mac->sme);
+	if (eHAL_STATUS_SUCCESS == status) {
+		if (NULL == callbackfn) {
+			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+				"%s: Indication Call back is NULL",
+				__func__);
+			sme_ReleaseGlobalLock(&mac->sme);
+			return eHAL_STATUS_FAILURE;
+		}
+
+		mac->sme.pget_peer_info_ext_ind_cb = callbackfn;
+		mac->sme.pget_peer_info_ext_cb_context = context;
+
+		/* serialize the req through MC thread */
+		vosmessage.bodyptr =
+			vos_mem_malloc(sizeof(struct sir_peer_info_ext_req));
+		if (NULL == vosmessage.bodyptr) {
+			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+				"%s: Memory allocation failed.", __func__);
+			sme_ReleaseGlobalLock(&mac->sme);
+			return eHAL_STATUS_E_MALLOC_FAILED;
+		}
+		vos_mem_copy(vosmessage.bodyptr,
+				req,
+				sizeof(struct sir_peer_info_ext_req));
+		vosmessage.type    = WDA_GET_PEER_INFO_EXT;
+		vosstatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosmessage);
+		if (!VOS_IS_STATUS_SUCCESS(vosstatus)) {
+			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+				"%s: Post get rssi msg fail", __func__);
 			vos_mem_free(vosmessage.bodyptr);
 			status = eHAL_STATUS_FAILURE;
 		}

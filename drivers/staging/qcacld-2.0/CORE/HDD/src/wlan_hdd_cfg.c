@@ -2258,19 +2258,33 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ENABLE_VHT_DYNAMIC_STA_CHAINMASK_MIN,
                  CFG_ENABLE_VHT_DYNAMIC_STA_CHAINMASK_MAX),
 
-   REG_VARIABLE( CFG_CHAIN_MASK_2G, WLAN_PARAM_Integer,
-                 hdd_config_t, chain_mask_2g,
+   REG_VARIABLE( CFG_RX_CHAIN_MASK_2G, WLAN_PARAM_Integer,
+                 hdd_config_t, chain_mask_2g_rx,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-                 CFG_CHAIN_MASK_2G_DEFAULT,
-                 CFG_CHAIN_MASK_2G_MIN,
-                 CFG_CHAIN_MASK_2G_MAX ),
+                 CFG_RX_CHAIN_MASK_2G_DEFAULT,
+                 CFG_RX_CHAIN_MASK_2G_MIN,
+                 CFG_RX_CHAIN_MASK_2G_MAX ),
 
-   REG_VARIABLE( CFG_CHAIN_MASK_5G, WLAN_PARAM_Integer,
-                 hdd_config_t, chain_mask_5g,
+   REG_VARIABLE( CFG_RX_CHAIN_MASK_5G, WLAN_PARAM_Integer,
+                 hdd_config_t, chain_mask_5g_rx,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-                 CFG_CHAIN_MASK_5G_DEFAULT,
-                 CFG_CHAIN_MASK_5G_MIN,
-                 CFG_CHAIN_MASK_5G_MAX ),
+                 CFG_RX_CHAIN_MASK_5G_DEFAULT,
+                 CFG_RX_CHAIN_MASK_5G_MIN,
+                 CFG_RX_CHAIN_MASK_5G_MAX ),
+
+   REG_VARIABLE( CFG_TX_CHAIN_MASK_2G, WLAN_PARAM_Integer,
+                 hdd_config_t, chain_mask_2g_tx,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_TX_CHAIN_MASK_2G_DEFAULT,
+                 CFG_TX_CHAIN_MASK_2G_MIN,
+                 CFG_TX_CHAIN_MASK_2G_MAX ),
+
+   REG_VARIABLE( CFG_TX_CHAIN_MASK_5G, WLAN_PARAM_Integer,
+                 hdd_config_t, chain_mask_5g_tx,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_TX_CHAIN_MASK_5G_DEFAULT,
+                 CFG_TX_CHAIN_MASK_5G_MIN,
+                 CFG_TX_CHAIN_MASK_5G_MAX ),
 
    REG_VARIABLE( CFG_VDEV_TYPE_NSS_2G, WLAN_PARAM_Integer,
                  hdd_config_t, vdev_type_nss_2g,
@@ -2387,12 +2401,19 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_MAX_MPDUS_IN_AMPDU_MIN,
                  CFG_MAX_MPDUS_IN_AMPDU_MAX),
 
-   REG_VARIABLE(CFG_SAP_MAX_MCS_FOR_TX_DATA, WLAN_PARAM_Integer,
-                 hdd_config_t, sap_max_mcs_txdata,
+   REG_VARIABLE(CFG_MAX_HT_MCS_FOR_TX_DATA, WLAN_PARAM_HexInteger,
+                 hdd_config_t, max_ht_mcs_txdata,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-                 CFG_SAP_MAX_MCS_FOR_TX_DATA_DEFAULT,
-                 CFG_SAP_MAX_MCS_FOR_TX_DATA_MIN,
-                 CFG_SAP_MAX_MCS_FOR_TX_DATA_MAX),
+                 CFG_MAX_HT_MCS_FOR_TX_DATA_DEFAULT,
+                 CFG_MAX_HT_MCS_FOR_TX_DATA_MIN,
+                 CFG_MAX_HT_MCS_FOR_TX_DATA_MAX),
+
+   REG_VARIABLE(CFG_SAP_GET_PEER_INFO, WLAN_PARAM_Integer,
+                 hdd_config_t, sap_get_peer_info,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_SAP_GET_PEER_INFO_DEFAULT,
+                 CFG_SAP_GET_PEER_INFO_MIN,
+                 CFG_SAP_GET_PEER_INFO_MAX),
 
    REG_VARIABLE( CFG_ENABLE_FIRST_SCAN_2G_ONLY_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, enableFirstScan2GOnly,
@@ -4966,6 +4987,20 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_SAP_CH_SWITCH_MODE_DEFAULT,
                 CFG_SAP_CH_SWITCH_MODE_MIN,
                 CFG_SAP_CH_SWITCH_MODE_MAX),
+
+   REG_VARIABLE(CFG_DFS_BEACON_TX_ENHANCED, WLAN_PARAM_Integer,
+                hdd_config_t, dfs_beacon_tx_enhanced,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_DFS_BEACON_TX_ENHANCED_DEFAULT,
+                CFG_DFS_BEACON_TX_ENHANCED_MIN,
+                CFG_DFS_BEACON_TX_ENHANCED_MAX),
+
+  REG_VARIABLE(CFG_REDUCED_BEACON_INTERVAL, WLAN_PARAM_Integer,
+               hdd_config_t, reduced_beacon_interval,
+               VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+               CFG_REDUCED_BEACON_INTERVAL_DEFAULT,
+               CFG_REDUCED_BEACON_INTERVAL_MIN,
+               CFG_REDUCED_BEACON_INTERVAL_MAX),
 };
 
 
@@ -7490,11 +7525,11 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       hddLog(LOGE, "Could not pass on WNI_CFG_TGT_GTX_USR_CFG to CCM");
    }
 
-   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_SAP_MAX_MCS_DATA,
-                    pConfig->sap_max_mcs_txdata, NULL,
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_MAX_HT_MCS_TX_DATA,
+                    pConfig->max_ht_mcs_txdata, NULL,
                     eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE) {
        fStatus = FALSE;
-       hddLog(LOGE, "Could not pass on WNI_CFG_SAP_MAX_MCS_DATA to CCM");
+       hddLog(LOGE, "Could not pass on WNI_CFG_MAX_HT_MCS_TX_DATA to CCM");
    }
 
    return fStatus;
@@ -8664,8 +8699,10 @@ VOS_STATUS hdd_parse_probe_req_ouis(hdd_context_t* pHddCtx)
  */
 void hdd_free_probe_req_ouis(hdd_context_t* pHddCtx)
 {
-	if (!pHddCtx->probe_req_voui)
+	if (pHddCtx->probe_req_voui) {
 		vos_mem_free(pHddCtx->probe_req_voui);
+		pHddCtx->probe_req_voui = NULL;
+	}
 
 	pHddCtx->no_of_probe_req_ouis = 0;
 }

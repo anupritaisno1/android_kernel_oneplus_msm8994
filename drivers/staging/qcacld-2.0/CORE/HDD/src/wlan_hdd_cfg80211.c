@@ -200,8 +200,6 @@
 #define WLAN_HDD_MAX_FEATURE_SET   8
 
 #define IS_DFS_MODE_VALID(mode) ((mode >= DFS_MODE_NONE && mode <= DFS_MODE_DEPRIORITIZE))
-#define IS_CHANNEL_VALID(channel) ((channel >= 0 && channel < 15) \
-		|| (channel >= 36 && channel <= 184))
 
 #ifdef FEATURE_WLAN_EXTSCAN
 /*
@@ -5944,8 +5942,7 @@ static void hdd_link_layer_process_radio_stats(hdd_adapter_t *pAdapter,
  * after receiving Link Layer indications from FW.This callback converts the
  * firmware data to the NL data and send the same to the kernel/upper layers.
  */
-static void wlan_hdd_cfg80211_link_layer_stats_callback(void *ctx,
-                                                        int indType,
+static void wlan_hdd_cfg80211_link_layer_stats_callback(void *ctx, int indType,
                                                         void *pRsp)
 {
     hdd_adapter_t *pAdapter = NULL;
@@ -7162,12 +7159,11 @@ static void wlan_hdd_cfg80211_ll_stats_ext_callback(tSirLLStatsResults *rsp)
 
 void wlan_hdd_cfg80211_link_layer_stats_init(hdd_context_t *pHddCtx)
 {
-    sme_SetLinkLayerStatsIndCB(pHddCtx->hHal,
-                                 wlan_hdd_cfg80211_link_layer_stats_callback);
-    sme_set_ll_ext_cb(pHddCtx->hHal,
-                      wlan_hdd_cfg80211_ll_stats_ext_callback);
+        sme_SetLinkLayerStatsIndCB(pHddCtx->hHal,
+                                   wlan_hdd_cfg80211_link_layer_stats_callback);
+        sme_set_ll_ext_cb(pHddCtx->hHal,
+                          wlan_hdd_cfg80211_ll_stats_ext_callback);
 }
-
 
 const struct
 nla_policy
@@ -12832,7 +12828,7 @@ static int hdd_get_station_remote(hdd_context_t *hdd_ctx,
 	    nla_put_u32(skb, REMOTE_TX_PACKETS, stainfo->tx_packets) ||
 	    nla_put_u64(skb, REMOTE_TX_BYTES, stainfo->tx_bytes) ||
 	    nla_put_u32(skb, REMOTE_RX_PACKETS, stainfo->rx_packets) ||
-	    nla_put_u64(skb, REMOTE_TX_BYTES, stainfo->rx_bytes) ||
+	    nla_put_u64(skb, REMOTE_RX_BYTES, stainfo->rx_bytes) ||
 	    nla_put_u8(skb, REMOTE_WMM, stainfo->isQosEnabled) ||
 	    nla_put_u8(skb, REMOTE_SUPPORTED_MODE, stainfo->mode)) {
 		hddLog(LOGE, FL("put fail"));
@@ -15752,6 +15748,11 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     pConfig->sap_chanswitch_mode =
         iniConfig->sap_chanswitch_mode;
 
+    pConfig->dfs_beacon_tx_enhanced =
+        iniConfig->dfs_beacon_tx_enhanced;
+
+    pConfig->reduced_beacon_interval =
+        iniConfig->reduced_beacon_interval;
     //channel is already set in the set_channel Call back
     //pConfig->channel = pCommitConfig->channel;
 
@@ -18969,20 +18970,9 @@ struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_list(
     struct wiphy *wiphy = wdev->wiphy;
     struct cfg80211_bss *bss = NULL;
 
-    bss = cfg80211_get_bss(wiphy, NULL, bssid,
+    bss = hdd_cfg80211_get_bss(wiphy, NULL, bssid,
                            NULL,
-                           0,
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)) && !defined(WITH_BACKPORTS) \
-     && !defined(IEEE80211_PRIVACY)
-                           (pAdapter->device_mode == WLAN_HDD_IBSS) ? \
-                               WLAN_CAPABILITY_IBSS : WLAN_CAPABILITY_ESS,
-                           (pAdapter->device_mode == WLAN_HDD_IBSS) ? \
-                               WLAN_CAPABILITY_IBSS : WLAN_CAPABILITY_ESS);
-#else
-                           (pAdapter->device_mode == WLAN_HDD_IBSS) ? \
-                               IEEE80211_BSS_TYPE_IBSS : IEEE80211_BSS_TYPE_ESS,
-                           IEEE80211_PRIVACY_ANY);
-#endif
+                           0);
     if (bss == NULL) {
         hddLog(LOGE, FL("BSS not present"));
     } else {
@@ -20488,7 +20478,8 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
     wlan_hdd_update_scan_rand_attrs((void *)&scanRequest, (void *)request,
                                     WLAN_HDD_HOST_SCAN);
 
-    if (!hdd_connIsConnected(station_ctx)) {
+    if (!hdd_connIsConnected(station_ctx) &&
+        (pHddCtx->cfg_ini->probe_req_ie_whitelist)) {
         if (pHddCtx->no_of_probe_req_ouis != 0) {
             scanRequest.voui = (struct vendor_oui *)vos_mem_malloc(
                                               pHddCtx->no_of_probe_req_ouis *
@@ -20501,12 +20492,11 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
             }
         }
 
-        if (pHddCtx->cfg_ini->probe_req_ie_whitelist)
-            wlan_hdd_fill_whitelist_ie_attrs(&scanRequest.ie_whitelist,
-                                             scanRequest.probe_req_ie_bitmap,
-                                             &scanRequest.num_vendor_oui,
-                                             scanRequest.voui,
-                                             pHddCtx);
+        wlan_hdd_fill_whitelist_ie_attrs(&scanRequest.ie_whitelist,
+                                         scanRequest.probe_req_ie_bitmap,
+                                         &scanRequest.num_vendor_oui,
+                                         scanRequest.voui,
+                                         pHddCtx);
     }
 
     vos_runtime_pm_prevent_suspend(pHddCtx->runtime_context.scan);
@@ -20934,8 +20924,11 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
         vos_mem_copy((void *)(pRoamProfile->SSIDs.SSIDList->SSID.ssId),
                 ssid, ssid_len);
 
-        if (bssid)
-        {
+        /* cleanup bssid hint and bssid */
+        vos_mem_zero(pRoamProfile->bssid_hint, VOS_MAC_ADDR_SIZE);
+        vos_mem_zero(pRoamProfile->BSSIDs.bssid, VOS_MAC_ADDR_SIZE);
+
+        if (bssid) {
             pRoamProfile->BSSIDs.numOfBSSIDs = 1;
             pRoamProfile->do_not_roam = true;
             vos_mem_copy((void *)(pRoamProfile->BSSIDs.bssid), bssid,
@@ -20946,11 +20939,8 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
              */
             vos_mem_copy((void *)(pWextState->req_bssId), bssid,
                     VOS_MAC_ADDR_SIZE);
-        }
-        else if (bssid_hint)
-        {
-            pRoamProfile->BSSIDs.numOfBSSIDs = 1;
-            vos_mem_copy((void *)(pRoamProfile->BSSIDs.bssid), bssid_hint,
+        } else if (bssid_hint) {
+            vos_mem_copy(pRoamProfile->bssid_hint, bssid_hint,
                     VOS_MAC_ADDR_SIZE);
             /* Save BSSID in separate variable as well, as RoamProfile
                BSSID is getting zeroed out in the association process. And in
@@ -20960,11 +20950,6 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
                     VOS_MAC_ADDR_SIZE);
             hddLog(LOGW, FL(" bssid_hint "MAC_ADDRESS_STR),
                    MAC_ADDR_ARRAY(bssid_hint));
-
-        }
-        else
-        {
-            vos_mem_zero((void *)(pRoamProfile->BSSIDs.bssid), VOS_MAC_ADDR_SIZE);
         }
 
         hddLog(LOG1, FL("Connect to SSID: %.*s operating Channel: %u"),
@@ -23043,6 +23028,409 @@ static int wlan_hdd_cfg80211_get_txpower(struct wiphy *wiphy,
 	return ret;
 }
 
+/**
+ * hdd_get_rate_flags_ht() - get HT rate flags based on rate, nss and mcs
+ * @rate: Data rate (100 kbps)
+ * @nss: Number of streams
+ * @mcs: HT mcs index
+ *
+ * This function is used to construct HT rate flag with rate, nss and mcs
+ *
+ * Return: rate flags for success, 0 on failure.
+ */
+static uint8_t hdd_get_rate_flags_ht(uint32_t rate,
+		uint8_t nss,
+		uint8_t mcs)
+{
+	struct index_data_rate_type *mcs_rate;
+	uint8_t flags = 0;
+
+	mcs_rate = (struct index_data_rate_type *)
+		((nss == 1) ? &supported_mcs_rate_nss1 :
+		 &supported_mcs_rate_nss2);
+
+	if (rate == mcs_rate[mcs].supported_rate[0]) {
+		flags |= eHAL_TX_RATE_HT20;
+	} else if (rate == mcs_rate[mcs].supported_rate[1]) {
+		flags |= eHAL_TX_RATE_HT40;
+	} else if (rate == mcs_rate[mcs].supported_rate[2]) {
+		flags |= eHAL_TX_RATE_HT20;
+		flags |= eHAL_TX_RATE_SGI;
+	} else if (rate == mcs_rate[mcs].supported_rate[3]) {
+		flags |= eHAL_TX_RATE_HT40;
+		flags |= eHAL_TX_RATE_SGI;
+	} else {
+		hddLog(VOS_TRACE_LEVEL_ERROR,
+				FL("invalid params rate %d nss %d mcs %d"),
+				rate, nss, mcs);
+	}
+
+	return flags;
+}
+
+#ifdef WLAN_FEATURE_11AC
+/**
+ * hdd_get_rate_flags_vht() - get VHT rate flags based on rate, nss and mcs
+ * @rate: Data rate (100 kbps)
+ * @nss: Number of streams
+ * @mcs: VHT mcs index
+ *
+ * This function is used to construct VHT rate flag with rate, nss and mcs
+ *
+ * Return: rate flags for success, 0 on failure.
+ */
+static uint8_t hdd_get_rate_flags_vht(uint32_t rate,
+		uint8_t nss,
+		uint8_t mcs)
+{
+	struct index_vht_data_rate_type *mcs_rate;
+	uint8_t flags = 0;
+
+	mcs_rate = (struct index_vht_data_rate_type *)
+		((nss == 1) ?
+		 &supported_vht_mcs_rate_nss1 :
+		 &supported_vht_mcs_rate_nss2);
+
+	if (rate == mcs_rate[mcs].supported_VHT80_rate[0]) {
+		flags |= eHAL_TX_RATE_VHT80;
+	} else if (rate == mcs_rate[mcs].supported_VHT80_rate[1]) {
+		flags |= eHAL_TX_RATE_VHT80;
+		flags |= eHAL_TX_RATE_SGI;
+	} else if (rate == mcs_rate[mcs].supported_VHT40_rate[0]) {
+		flags |= eHAL_TX_RATE_VHT40;
+	} else if (rate == mcs_rate[mcs].supported_VHT40_rate[1]) {
+		flags |= eHAL_TX_RATE_VHT40;
+		flags |= eHAL_TX_RATE_SGI;
+	} else if (rate == mcs_rate[mcs].supported_VHT20_rate[0]) {
+		flags |= eHAL_TX_RATE_VHT20;
+	} else if (rate == mcs_rate[mcs].supported_VHT20_rate[1]) {
+		flags |= eHAL_TX_RATE_VHT20;
+		flags |= eHAL_TX_RATE_SGI;
+	} else {
+		hddLog(VOS_TRACE_LEVEL_ERROR,
+				FL("invalid params rate %d nss %d mcs %d"),
+				rate, nss, mcs);
+	}
+
+	return flags;
+}
+#else
+static uint8_t hdd_get_rate_flags_vht(uint32_t rate,
+		uint8_t nss,
+		uint8_t mcs)
+{
+	return 0;
+}
+#endif
+
+/**
+ * hdd_get_rate_flags() - get HT/VHT rate flags based on rate, nss and mcs
+ * @rate: Data rate (100 kbps)
+ * @mode: Tx/Rx mode
+ * @nss: Number of streams
+ * @mcs: Mcs index
+ *
+ * This function is used to construct rate flag with rate, nss and mcs
+ *
+ * Return: rate flags for success, 0 on failure.
+ */
+static uint8_t hdd_get_rate_flags(uint32_t rate,
+		uint8_t mode,
+		uint8_t nss,
+		uint8_t mcs)
+{
+	uint8_t flags = 0;
+
+	if (mode == SIR_SME_PHY_MODE_HT)
+		flags = hdd_get_rate_flags_ht(rate, nss, mcs);
+	else if (mode == SIR_SME_PHY_MODE_VHT)
+		flags = hdd_get_rate_flags_vht(rate, nss, mcs);
+	else
+		hddLog(VOS_TRACE_LEVEL_ERROR,
+				FL("invalid mode param %d"),
+				mode);
+
+	return flags;
+}
+
+/**
+ * wlan_hdd_fill_rate_info() - fill HDD rate info from SIR peer info
+ * @ap_ctx: AP Context
+ * @peer_info: SIR peer info pointer
+ *
+ * This function is used to fill HDD rate info rom SIR peer info
+ *
+ * Return: None
+ */
+static void wlan_hdd_fill_rate_info(hdd_ap_ctx_t *ap_ctx,
+		struct sir_peer_info_ext *peer_info)
+{
+	uint8_t flags;
+	uint32_t rate_code;
+
+	/* tx rate info */
+	ap_ctx->txrx_stats.tx_rate.rate = peer_info->tx_rate;
+	rate_code = peer_info->tx_rate_code;
+
+	ap_ctx->txrx_stats.tx_rate.mode = SIR_SME_PHY_MODE_LEGACY;
+	if ((WMI_GET_HW_RATECODE_PREAM_V1(rate_code)) ==
+			WMI_RATE_PREAMBLE_HT)
+		ap_ctx->txrx_stats.tx_rate.mode = SIR_SME_PHY_MODE_HT;
+	else if ((WMI_GET_HW_RATECODE_PREAM_V1(rate_code)) ==
+			WMI_RATE_PREAMBLE_VHT)
+		ap_ctx->txrx_stats.tx_rate.mode = SIR_SME_PHY_MODE_VHT;
+
+	ap_ctx->txrx_stats.tx_rate.nss =
+		WMI_GET_HW_RATECODE_NSS_V1(rate_code) + 1;
+	ap_ctx->txrx_stats.tx_rate.mcs =
+		WMI_GET_HW_RATECODE_RATE_V1(rate_code);
+
+	flags = hdd_get_rate_flags(ap_ctx->txrx_stats.tx_rate.rate/100,
+			ap_ctx->txrx_stats.tx_rate.mode,
+			ap_ctx->txrx_stats.tx_rate.nss,
+			ap_ctx->txrx_stats.tx_rate.mcs);
+	if (flags != 0)
+		ap_ctx->txrx_stats.tx_rate.rate_flags = flags;
+
+	hddLog(VOS_TRACE_LEVEL_INFO,
+			FL("tx: mode %d nss %d mcs %d rate_flags %x flags %x"),
+			ap_ctx->txrx_stats.tx_rate.mode,
+			ap_ctx->txrx_stats.tx_rate.nss,
+			ap_ctx->txrx_stats.tx_rate.mcs,
+			ap_ctx->txrx_stats.tx_rate.rate_flags,
+			flags);
+
+	/* rx rate info */
+	ap_ctx->txrx_stats.rx_rate.rate = peer_info->rx_rate;
+	rate_code = peer_info->rx_rate_code;
+
+	ap_ctx->txrx_stats.rx_rate.mode = SIR_SME_PHY_MODE_LEGACY;
+	if ((WMI_GET_HW_RATECODE_PREAM_V1(rate_code)) ==
+			WMI_RATE_PREAMBLE_HT)
+		ap_ctx->txrx_stats.rx_rate.mode = SIR_SME_PHY_MODE_HT;
+	else if ((WMI_GET_HW_RATECODE_PREAM_V1(rate_code)) ==
+			WMI_RATE_PREAMBLE_VHT)
+		ap_ctx->txrx_stats.rx_rate.mode = SIR_SME_PHY_MODE_VHT;
+
+	ap_ctx->txrx_stats.rx_rate.nss =
+		WMI_GET_HW_RATECODE_NSS_V1(rate_code) + 1;
+	ap_ctx->txrx_stats.rx_rate.mcs =
+		WMI_GET_HW_RATECODE_RATE_V1(rate_code);
+
+	flags = hdd_get_rate_flags(ap_ctx->txrx_stats.rx_rate.rate/100,
+			ap_ctx->txrx_stats.rx_rate.mode,
+			ap_ctx->txrx_stats.rx_rate.nss,
+			ap_ctx->txrx_stats.rx_rate.mcs);
+	if (flags != 0)
+		ap_ctx->txrx_stats.rx_rate.rate_flags = flags;
+
+	hddLog(VOS_TRACE_LEVEL_INFO,
+			FL("rx: mode %d nss %d mcs %d rate_flags %x flags %x"),
+			ap_ctx->txrx_stats.rx_rate.mode,
+			ap_ctx->txrx_stats.rx_rate.nss,
+			ap_ctx->txrx_stats.rx_rate.mcs,
+			ap_ctx->txrx_stats.rx_rate.rate_flags,
+			flags);
+}
+
+/**
+ * wlan_hdd_get_peer_info_cb() - get peer info callback
+ * @sta_info: pointer of peer information
+ * @context: get peer info callback context
+ *
+ * This function will fill stats info of AP Context
+ *
+ */
+void wlan_hdd_get_peer_info_cb(struct sir_peer_info_ext_resp *sta_info,
+		void *context)
+{
+	struct statsContext *get_peer_info_context;
+	struct sir_peer_info_ext *peer_info;
+	hdd_adapter_t *adapter;
+	hdd_ap_ctx_t *ap_ctx;
+
+	if ((NULL == sta_info) || (NULL == context)) {
+		hddLog(VOS_TRACE_LEVEL_ERROR,
+			"%s: Bad param, sta_info [%p] context [%p]",
+			__func__, sta_info, context);
+		return;
+	}
+
+	spin_lock(&hdd_context_lock);
+	/*
+	 * there is a race condition that exists between this callback
+	 * function and the caller since the caller could time out either
+	 * before or while this code is executing.  we use a spinlock to
+	 * serialize these actions
+	 */
+	get_peer_info_context = context;
+	if (PEER_INFO_CONTEXT_MAGIC !=
+			get_peer_info_context->magic) {
+		/*
+		 * the caller presumably timed out so there is nothing
+		 * we can do
+		 */
+		spin_unlock(&hdd_context_lock);
+		hddLog(VOS_TRACE_LEVEL_WARN,
+			"%s: Invalid context, magic [%08x]",
+			__func__,
+			get_peer_info_context->magic);
+		return;
+	}
+
+	if (!sta_info->count) {
+		spin_unlock(&hdd_context_lock);
+		hddLog(VOS_TRACE_LEVEL_ERROR,
+				FL("Fail to get remote peer info"));
+		return;
+	}
+
+	adapter = get_peer_info_context->pAdapter;
+	ap_ctx = WLAN_HDD_GET_AP_CTX_PTR(adapter);
+	vos_mem_zero(&ap_ctx->txrx_stats,
+			sizeof(struct hdd_fw_txrx_stats));
+
+	peer_info = sta_info->info;
+	ap_ctx->txrx_stats.tx_packets = peer_info->tx_packets;
+	ap_ctx->txrx_stats.tx_bytes = peer_info->tx_bytes;
+	ap_ctx->txrx_stats.rx_packets = peer_info->rx_packets;
+	ap_ctx->txrx_stats.rx_bytes = peer_info->rx_bytes;
+	ap_ctx->txrx_stats.tx_retries = peer_info->tx_retries;
+	ap_ctx->txrx_stats.tx_failed = peer_info->tx_failed;
+	ap_ctx->txrx_stats.rssi =
+		peer_info->rssi + WLAN_HDD_TGT_NOISE_FLOOR_DBM;
+	wlan_hdd_fill_rate_info(ap_ctx, peer_info);
+
+	get_peer_info_context->magic = 0;
+
+	/* notify the caller */
+	complete(&get_peer_info_context->completion);
+
+	/* serialization is complete */
+	spin_unlock(&hdd_context_lock);
+}
+
+/**
+ * wlan_hdd_get_peer_info() - get peer info
+ * @adapter: hostapd interface
+ * @macaddress: request peer mac address
+ *
+ * This function will call sme_get_peer_info_ext to get peer info
+ *
+ * Return: 0 on success, otherwise error value
+ */
+static int wlan_hdd_get_peer_info(hdd_adapter_t *adapter,
+					v_MACADDR_t macaddress)
+{
+	eHalStatus hstatus;
+	int ret;
+	struct statsContext context;
+	struct sir_peer_info_ext_req peer_info_req;
+
+	if (NULL == adapter) {
+		hddLog(VOS_TRACE_LEVEL_ERROR, "%s: pAdapter is NULL",
+			__func__);
+		return -EFAULT;
+	}
+
+	init_completion(&context.completion);
+	context.magic = PEER_INFO_CONTEXT_MAGIC;
+	context.pAdapter = adapter;
+
+	vos_mem_copy(&(peer_info_req.peer_macaddr), &macaddress,
+			VOS_MAC_ADDR_SIZE);
+	peer_info_req.sessionid = adapter->sessionId;
+	peer_info_req.reset_after_request = 0;
+	hstatus = sme_get_peer_info_ext(WLAN_HDD_GET_HAL_CTX(adapter),
+			&peer_info_req,
+			&context,
+			wlan_hdd_get_peer_info_cb);
+	if (eHAL_STATUS_SUCCESS != hstatus) {
+		hddLog(VOS_TRACE_LEVEL_ERROR,
+			"%s: Unable to retrieve statistics for peer info",
+			__func__);
+		ret = -EFAULT;
+	} else {
+		if (!wait_for_completion_timeout(&context.completion,
+				msecs_to_jiffies(WLAN_WAIT_TIME_STATS))) {
+			hddLog(VOS_TRACE_LEVEL_ERROR,
+				"%s: SME timed out while retrieving peer info",
+				__func__);
+			ret = -EFAULT;
+		} else
+			ret = 0;
+	}
+	/*
+	 * either we never sent a request, we sent a request and received a
+	 * response or we sent a request and timed out.  if we never sent a
+	 * request or if we sent a request and got a response, we want to
+	 * clear the magic out of paranoia.  if we timed out there is a
+	 * race condition such that the callback function could be
+	 * executing at the same time we are. of primary concern is if the
+	 * callback function had already verified the "magic" but had not
+	 * yet set the completion variable when a timeout occurred. we
+	 * serialize these activities by invalidating the magic while
+	 * holding a shared spinlock which will cause us to block if the
+	 * callback is currently executing
+	 */
+	spin_lock(&hdd_context_lock);
+	context.magic = 0;
+	spin_unlock(&hdd_context_lock);
+	return ret;
+}
+
+/**
+ * wlan_hdd_get_station_remote() - NL80211_CMD_GET_STATION handler for SoftAP
+ * @wiphy: pointer to wiphy
+ * @dev: pointer to net_device structure
+ * @mac: request peer mac address
+ * @sinfo: pointer to station_info struct
+ *
+ * This function will get remote peer info from fw and fill sinfo struct
+ *
+ * Return: 0 on success, otherwise error value
+ */
+static int wlan_hdd_get_station_remote(struct wiphy *wiphy,
+		struct net_device *dev,
+		const u8 *mac,
+		struct station_info *sinfo)
+{
+	hdd_adapter_t *adapter = WLAN_HDD_GET_PRIV_PTR(dev);
+	hdd_context_t *hddctx = (hdd_context_t *)wiphy_priv(wiphy);
+	hdd_station_info_t *stainfo = NULL;
+	v_MACADDR_t macaddr;
+	int status;
+	int i;
+
+	status = wlan_hdd_validate_context(hddctx);
+	if (0 != status)
+		return status;
+
+	hddLog(VOS_TRACE_LEVEL_INFO, FL("get peer %pM info"), mac);
+
+	for (i = 0; i < WLAN_MAX_STA_COUNT; i++) {
+		if (vos_mem_compare(adapter->aStaInfo[i].macAddrSTA.bytes,
+					mac,
+					VOS_MAC_ADDR_SIZE)) {
+			stainfo = &adapter->aStaInfo[i];
+			break;
+		}
+	}
+
+	if (!stainfo) {
+		hddLog(LOGE, FL("peer %pM not found"), mac);
+		return -EINVAL;
+	}
+
+	vos_mem_copy(macaddr.bytes, mac, VOS_MAC_ADDR_SIZE);
+	status = wlan_hdd_get_peer_info(adapter, macaddr);
+	if (status) {
+		hddLog(LOGE, FL("fail to get peer info from fw"));
+		return -EPERM;
+	}
+
+	return status;
+}
 
 static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
                                            struct net_device *dev,
@@ -23089,6 +23477,9 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
         hddLog(LOGE, FL("Command not allowed in FTM mode"));
         return -EINVAL;
     }
+    if (pAdapter->device_mode == WLAN_HDD_SOFTAP &&
+		    pCfg->sap_get_peer_info)
+        return wlan_hdd_get_station_remote(wiphy, dev, mac, sinfo);
 
     if ((eConnectionState_Associated != pHddStaCtx->conn_info.connState) ||
             (0 == ssidlen))
@@ -24589,7 +24980,8 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         return -ENOTSUPP;
     }
 
-    if (!hdd_connIsConnected(station_ctx))
+    if (!hdd_connIsConnected(station_ctx) &&
+        pHddCtx->cfg_ini->probe_req_ie_whitelist)
         pPnoRequest = (tpSirPNOScanReq) vos_mem_malloc(sizeof(tSirPNOScanReq) +
                                     (pHddCtx->no_of_probe_req_ouis) *
                                     (sizeof(struct vendor_oui)));
@@ -24603,9 +24995,14 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         return -ENOMEM;
     }
 
-    memset(pPnoRequest, 0, sizeof (tSirPNOScanReq) +
-                           (pHddCtx->no_of_probe_req_ouis) *
-                           (sizeof(struct vendor_oui)));
+    if (!hdd_connIsConnected(station_ctx) &&
+        pHddCtx->cfg_ini->probe_req_ie_whitelist)
+        memset(pPnoRequest, 0, sizeof (tSirPNOScanReq) +
+               (pHddCtx->no_of_probe_req_ouis) *
+               (sizeof(struct vendor_oui)));
+    else
+        memset(pPnoRequest, 0, sizeof (tSirPNOScanReq));
+
     pPnoRequest->enable = 1; /*Enable PNO */
     pPnoRequest->ucNetworksCount = request->n_match_sets;
     if ((!pPnoRequest->ucNetworksCount ) ||
