@@ -1,4 +1,5 @@
-ccflags-y := -Iinclude/uapi/drm -Iinclude/drm -Idrivers/gpu/msm
+ccflags-y := -Iinclude/uapi/drm -Iinclude/drm -Idrivers/gpu/msm -Ofast -mtune=cortex-a57.cortex-a53 -mcpu=cortex-a57.cortex-a53
+
 
 msm_kgsl_core-y = \
 	kgsl.o \
