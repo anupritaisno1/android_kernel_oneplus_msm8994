@@ -5,5 +5,5 @@ export ARCH=arm64                                                               
 export KBUILD_BUILD_HOST="The_literary_club"
 STRIP="home/Suzu.memeYa/toolchain/bin/aarch64-linux-android-strip"
 export CCOMPILE=$CROSS_COMPILE
-export CROSS_COMPILE=aarch64-linux-android-
+export CROSS_COMPILE=aarch64-linux-gnu-
 export PATH=$PATH:/home/Suzu.memeYa/toolchain/bin
