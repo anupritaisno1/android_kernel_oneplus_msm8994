@@ -242,8 +242,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = gcc
 HOSTCXX      = g++
-HOSTCFLAGS   = -Wstrict-prototypes -Ofast -fomit-frame-pointer -std=gnu99
-HOSTCXXFLAGS = -Ofast
+HOSTCFLAGS   = -Wstrict-prototypes -Os -fomit-frame-pointer -std=gnu99
+HOSTCXXFLAGS = -Os
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -327,9 +327,9 @@ include $(srctree)/scripts/Kbuild.include
 
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
-LD		+= -Ofast --strip-debug
+LD		+= -Os --strip-debug
 CC		= $(CROSS_COMPILE)gcc
-CC		+= -Ofast -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53
+CC		+= -Os -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53
 CC		+= -fmodulo-sched -fmodulo-sched-allow-regmoves
 CC		+= -fgraphite-identity -floop-block -floop-interchange -floop-strip-mine
 CC		+= -ftree-loop-linear -ftree-loop-distribution
