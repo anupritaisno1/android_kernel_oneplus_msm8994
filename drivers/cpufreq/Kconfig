@@ -118,11 +118,6 @@ config CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 	  loading your cpufreq low-level hardware driver, using the
 	  'interactive' governor for latency-sensitive workloads.
 
-config CPU_FREQ_DEFAULT_GOV_DESPAIR
-	bool "despair"
-	select CPU_FREQ_GOV_DESPAIR
-	help
-
 config CPU_FREQ_DEFAULT_GOV_DARKNESS
  	bool "darkness"
  	select CPU_FREQ_GOV_DARKNESS
@@ -251,10 +246,6 @@ config CPU_FREQ_GOV_CONSERVATIVE
 
 	  If in doubt, say N.
 
-config CPU_FREQ_GOV_DESPAIR
-	tristate "'despair' cpufreq governor"
-	depends on CPU_FREQ
-	
 config CPU_FREQ_GOV_BLUACTIVE
 	tristate "'bluactive' cpufreq governor"
 
