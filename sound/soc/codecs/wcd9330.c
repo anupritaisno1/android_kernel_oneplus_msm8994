@@ -122,37 +122,64 @@ MODULE_PARM_DESC(high_perf_mode, "enable/disable class AB config for hph");
  */
 
 
-//PDesireAudio Version: 10.0 Yandere Audio
+//PDesireAudio Version: 10.1 Yandere Audio
 static int uhqa_mode_pdesireaudio = 1;
 module_param(uhqa_mode_pdesireaudio, int,
 			S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(uhqa_mode_pdesireaudio, "PDesireAudio UHQA Audio output switch");
 
+static int pdesireaudio_static_mode;
+module_param(pdesireaudio_static_mode, int,
+			S_IRUGO | S_IWUSR | S_IWGRP);
+MODULE_PARM_DESC(pdesireaudio_static_mode, "Set PDesireAudio to static mode, so User can just control via kernelspace without changes due dynamic changes");
+
+
 void pdesireaudio_start(void) 
 {
-	uhqa_mode_pdesireaudio = 1;
+	if (!pdesireaudio_static_mode){
+		printk("Enable PDesireAudio");
+		uhqa_mode_pdesireaudio = 1;
+	}
 }
 
 void pdesireaudio_remove(void) 
 {
-	uhqa_mode_pdesireaudio = 0;
+	if (!pdesireaudio_static_mode){
+		printk("Disable PDesireAudio");
+		uhqa_mode_pdesireaudio = 0;
+	}
 } 
 
 void pdesireaudio_init(void) 
 {
-	bool active;
+	if (!pdesireaudio_static_mode){
+		bool active;
+
+
+		printk("Re-Init PDesireAudio");
+		if (!uhqa_mode_pdesireaudio)
+			active = false;
+		else
+			active = true;
+
+
+		pdesireaudio_remove();
+
+		if (active == true)
+			pdesireaudio_start();
 	
-	if (!uhqa_mode_pdesireaudio)
-		active = false;
-	else 
-		active = true;
-	
-	
-	pdesireaudio_remove();
-	
-	if (active == true)
-		pdesireaudio_start();
-	
+	}
+}
+
+void pdesireaudio_api_static_mode_control(bool enable)
+{
+	if(enable == true) {
+		printk("Set PDesireAudio to static mode");
+		pdesireaudio_static_mode = 1;
+	} else {
+		printk("Set PDesireAudio to dynamic mode");
+		pdesireaudio_static_mode = 0;
+	}
 }
 
 static struct afe_param_slimbus_slave_port_cfg tomtom_slimbus_slave_port_cfg = {
@@ -421,7 +448,9 @@ static struct afe_param_id_clip_bank_sel clip_bank_sel = {
 			SNDRV_PCM_FORMAT_S24_LE | \
 			SNDRV_PCM_FMTBIT_S24_3LE)
 
-#define TOMTOM_FORMATS (SNDRV_PCM_FMTBIT_S16_LE)
+#define TOMTOM_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | \
+			SNDRV_PCM_FORMAT_S24_LE | \
+			SNDRV_PCM_FMTBIT_S24_3LE)
 
 #define TOMTOM_SLIM_PGD_PORT_INT_TX_EN0 (TOMTOM_SLIM_PGD_PORT_INT_EN0 + 2)
 #define TOMTOM_ZDET_BOX_CAR_AVG_LOOP_COUNT 1
@@ -821,6 +850,10 @@ static int tomtom_update_uhqa_mode(struct snd_soc_codec *codec, int path)
 		tomtom_p->uhqa_mode = 1;
 	} else {
 		tomtom_p->uhqa_mode = 0;
+	}
+
+	if (uhqa_mode_pdesireaudio) {
+		tomtom_p->uhqa_mode = 1;
 	}
 	dev_dbg(codec->dev, "%s: uhqa_mode=%d", __func__, tomtom_p->uhqa_mode);
 	return ret;
@@ -1266,9 +1299,12 @@ static int tomtom_config_compander(struct snd_soc_dapm_widget *w,
 	if (!tomtom->comp_enabled[comp])
 		return 0;
 
-	/* Compander 0 has two channels */
-	mask = enable_mask = 0x03;
-	buck_mv = tomtom_codec_get_buck_mv(codec);
+
+	if (!uhqa_mode_pdesireaudio) {
+		/* Compander 0 has two channels */
+		mask = enable_mask = 0x03;
+		buck_mv = tomtom_codec_get_buck_mv(codec);
+	}
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
