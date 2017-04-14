@@ -188,9 +188,6 @@
 #define __visible	__attribute__((externally_visible))
 #endif
 
-/* Avoid reordering a top level statement */
-#define __noreorder	__attribute__((no_reorder))
-
 /*
  * GCC 'asm goto' miscompiles certain code sequences:
  *
