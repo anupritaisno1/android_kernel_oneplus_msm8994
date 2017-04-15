@@ -131,7 +131,12 @@ config CPU_FREQ_DEFAULT_GOV_BLUACTIVE
 config CPU_FREQ_DEFAULT_GOV_NIGHTMARE
 	bool "nightmare"
 	select CPU_FREQ_GOV_NIGHTMARE
+
+config CPU_FREQ_DEFAULT_GOV_CULTIVATION
+	bool "cultivation"
+	select CPU_FREQ_GOV_CULTIVATION
 	help
+	Use the CPUFreq governor 'cultivation' as default.
 
 config CPU_FREQ_DEFAULT_GOV_CHILL
 	bool "chill"
@@ -304,6 +309,11 @@ config CPU_FREQ_GOV_CONSERVATIVE
 
 config CPU_FREQ_GOV_BLUACTIVE
 	tristate "'bluactive' cpufreq governor"
+
+config CPU_FREQ_GOV_CULTIVATION
+	tristate "'cultivation' cpufreq governor"
+	depends on CPU_FREQ
+	help
 
 config CPU_FREQ_GOV_CHILL
 	tristate "'chill' cpufreq governor"
