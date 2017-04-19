@@ -356,9 +356,7 @@ CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
 # fall back to -march=armv8-a in case the compiler isn't compatible 
 # with -mcpu and -mtune
-ARM_ARCH_OPT := -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53
-GEN_OPT_FLAGS := $(call cc-option,$(ARM_ARCH_OPT),-march=armv8-a) \
- -g0 \
+GEN_OPT_FLAGS := -g0 \
  -DNDEBUG \
  -fomit-frame-pointer \
  -fmodulo-sched \
@@ -389,7 +387,8 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
-		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
+		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53  \
+		   -fno-pic \
 		   -fno-delete-null-pointer-checks \
 		   -std=gnu89 -Wno-unused-const-variable -Wno-misleading-indentation \
            -Wno-memset-transposed-args  -Wno-bool-compare -Wno-logical-not-parentheses \
@@ -416,7 +415,7 @@ KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
 KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
 
 # arter97's optimizations
-KBUILD_CFLAGS	+= -pipe -fno-pic -O2
+KBUILD_CFLAGS	+= -pipe -fno-pic
 
 export VERSION PATCHLEVEL SUBLEVEL KERNELRELEASE KERNELVERSION
 export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
