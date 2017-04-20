@@ -389,6 +389,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Wno-format-security \
 		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53  \
 		   -fno-pic \
+		   -Ofast -fno-inline-functions \
 		   -fno-delete-null-pointer-checks \
 		   -std=gnu89 -Wno-unused-const-variable -Wno-misleading-indentation \
            -Wno-memset-transposed-args  -Wno-bool-compare -Wno-logical-not-parentheses \
