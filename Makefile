@@ -353,7 +353,6 @@ LDFLAGS_MODULE  = --strip-debug
 CFLAGS_KERNEL	= $(GRAPHITE)
 AFLAGS_KERNEL	= $(GRAPHITE)
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
-CFLAGS_KCOV	    = -fsanitize-coverage=trace-pc
 
 # fall back to -march=armv8-a in case the compiler isn't compatible 
 # with -mcpu and -mtune
@@ -391,9 +390,6 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53  \
 		   -fno-pic \
 		   -Ofast -fno-inline-functions \
-		   -fgcse-sm -fsched-spec-load \
-		   -fsingle-precision-constant \
-		   -mstrict-align \
 		   -fno-delete-null-pointer-checks \
 		   -std=gnu89 -Wno-unused-const-variable -Wno-misleading-indentation \
            -Wno-memset-transposed-args  -Wno-bool-compare -Wno-logical-not-parentheses \
