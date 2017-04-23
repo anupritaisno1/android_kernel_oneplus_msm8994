@@ -394,7 +394,6 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fgcse-sm -fsched-spec-load \
 		   -fsingle-precision-constant \
 		   -mstrict-align \
-		   -mfix-cortex-a53-835769 -mfix-cortex-a53-843419 \
 		   -fno-delete-null-pointer-checks \
 		   -std=gnu89 -Wno-unused-const-variable -Wno-misleading-indentation \
            -Wno-memset-transposed-args  -Wno-bool-compare -Wno-logical-not-parentheses \
