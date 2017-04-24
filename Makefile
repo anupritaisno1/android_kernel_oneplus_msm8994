@@ -247,7 +247,7 @@ GRAPHITE = -fgraphite -fgraphite-identity -floop-interchange -ftree-loop-distrib
 HOSTCC       = $(which ccache) gcc
 HOSTCXX      = $(which ccache) g++
 HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -Ofast -fno-inline-functions -fno-ipa-cp-clone -fomit-frame-pointer -std=gnu89 $(GRAPHITE)
-HOSTCXXFLAGS = -Ofast -fno-inline-functions -fgcse-las -pipe -fno-ipa-cp-clone $(GRAPHITE)
+HOSTCXXFLAGS = -Ofast -fno-inline-functions -fno-ipa-cp-clone $(GRAPHITE)
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -673,7 +673,7 @@ else
 # select FRAME_POINTER.  However, FUNCTION_TRACER adds -pg, and this is
 # incompatible with -fomit-frame-pointer with current GCC, so we don't use
 # -fomit-frame-pointer with FUNCTION_TRACER.
-ifdef CONFIG_FUNCTION_TRACER
+ifndef CONFIG_FUNCTION_TRACER
 KBUILD_CFLAGS	+= -fomit-frame-pointer
 endif
 endif
