@@ -347,11 +347,11 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-CFLAGS_MODULE   = $(GRAPHITE)
-AFLAGS_MODULE   = $(GRAPHITE)
+CFLAGS_MODULE   =
+AFLAGS_MODULE   =
 LDFLAGS_MODULE  = --strip-debug
-CFLAGS_KERNEL	= $(GRAPHITE)
-AFLAGS_KERNEL	= $(GRAPHITE)
+CFLAGS_KERNEL	=
+AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
 # fall back to -march=armv8-a in case the compiler isn't compatible 
@@ -404,15 +404,6 @@ KBUILD_AFLAGS   := -D__ASSEMBLY__
 KBUILD_AFLAGS_MODULE  := -DMODULE $(GEN_OPT_FLAGS)
 KBUILD_CFLAGS_MODULE  := -DMODULE -fno-pic $(GEN_OPT_FLAGS)
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
-
-# Disable some warnings
-KBUILD_CFLAGS += $(call cc-disable-warning,maybe-uninitialized)
-KBUILD_CFLAGS += $(call cc-disable-warning,array-bounds)
-KBUILD_CFLAGS += $(call cc-disable-warning,unused-function)
-KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
-
-# another warning
-KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
 
 #ifdef VENDOR_EDIT
 KBUILD_CFLAGS +=   -DVENDOR_EDIT
@@ -665,6 +656,7 @@ KBUILD_CFLAGS += $(stackp-flag)
 # This warning generated too much noise in a regular build.
 # Use make W=1 to enable this warning (see scripts/Makefile.build)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
+
 ifdef CONFIG_FRAME_POINTER
 KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
 else
@@ -703,7 +695,6 @@ ifdef CONFIG_DYNAMIC_FTRACE
 	endif
 endif
 endif
-
 
 # We trigger additional mismatches with less inlining
 ifdef CONFIG_DEBUG_SECTION_MISMATCH
