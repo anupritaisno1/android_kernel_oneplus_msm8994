@@ -165,12 +165,7 @@ export srctree objtree VPATH
 # then ARCH is assigned, getting whatever value it gets normally, and 
 # SUBARCH is subsequently ignored.
 
-SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
-				  -e s/sun4u/sparc64/ \
-				  -e s/arm.*/arm/ -e s/sa110/arm/ \
-				  -e s/s390x/s390/ -e s/parisc64/parisc/ \
-				  -e s/ppc.*/powerpc/ -e s/mips.*/mips/ \
-				  -e s/sh[234].*/sh/ -e s/aarch64.*/arm64/ )
+SUBARCH := arm64
 
 # Cross compiling and selecting different set of gcc/bin-utils
 # ---------------------------------------------------------------------------
@@ -610,11 +605,10 @@ KBUILD_CFLAGS += $(call cc-option, -no-pie)
 KBUILD_AFLAGS += $(call cc-option, -fno-pie)
 KBUILD_CPPFLAGS += $(call cc-option, -fno-pie)
 
-ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
-else
-KBUILD_CFLAGS	+= -Ofast -fno-inline-functions -fno-ipa-cp-clone -Wno-maybe-uninitialized 
-endif
+
+KBUILD_CFLAGS	+= -Ofast -fno-inline-functions -fno-pic -fno-ipa-cp-clone -Wno-maybe-uninitialized
+KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
+
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
