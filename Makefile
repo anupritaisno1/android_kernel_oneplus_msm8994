@@ -327,6 +327,12 @@ include $(srctree)/scripts/Kbuild.include
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
 CC		= $(which ccache) $(CROSS_COMPILE)gcc
+LD		+= -Ofast --strip-debug
+CC		+= -Ofast
+CC		+= -fmodulo-sched -fmodulo-sched-allow-regmoves
+CC		+= -fgraphite-identity -floop-block -floop-interchange -floop-strip-mine
+CC		+= -ftree-loop-linear -ftree-loop-distribution
+CC		+= -mlow-precision-recip-sqrt -mpc-relative-literal-loads
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -608,7 +614,6 @@ KBUILD_CPPFLAGS += $(call cc-option, -fno-pie)
 
 KBUILD_CFLAGS	+= -Ofast -fno-inline-functions -fno-pic -fno-ipa-cp-clone -Wno-maybe-uninitialized
 KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
-
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
