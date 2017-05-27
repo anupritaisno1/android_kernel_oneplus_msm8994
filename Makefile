@@ -237,8 +237,35 @@ export KCONFIG_CONFIG
 CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
 	  else echo sh; fi ; fi)
+FLAGS_OPTIMIZE := -falign-functions=32 -fgcse-las -fivopts \
+	-fgcse-sm \
+	-fipa-pta \
+	-fomit-frame-pointer \
+	-frename-registers \
+	-ftracer \
+	-ftree-loop-im \
+	-ftree-loop-ivcanon \
+	-funsafe-loop-optimizations \
+	-funswitch-loops \
+	-fweb \
+	-Wno-error=array-bounds \
+	-Wno-error=clobbered \
+	-Wno-error=maybe-uninitialized \
+	-Wno-error=strict-overflow \
+	-fgcse-after-reload \
+	-floop-block \
+	-floop-interchange \
+	-floop-nest-optimize \
+	-floop-parallelize-all \
+	-floop-strip-mine \
+	-fmodulo-sched \
+	-fmodulo-sched-allow-regmoves \
+	-frerun-cse-after-loop \
+	-frename-registers \
+	$(GRAPHITE)
 
-GRAPHITE = -fgraphite -fgraphite-identity -floop-interchange -ftree-loop-distribution -floop-strip-mine -floop-block -ftree-loop-linear
+GRAPHITE = -fgraphite -fgraphite-identity -floop-interchange -ftree-loop-distribution -floop-strip-mine -floop-block -ftree-loop-linear \
+	   $(FLAGS_OPTIMIZE)
 HOSTCC       = $(which ccache) gcc
 HOSTCXX      = $(which ccache) g++
 HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -Ofast -fno-inline-functions -fno-ipa-cp-clone -fomit-frame-pointer -std=gnu89 $(GRAPHITE)
@@ -355,6 +382,7 @@ CFLAGS_KERNEL	= $(GRAPHITE)
 AFLAGS_KERNEL	= $(GRAPHITE)
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
+
 # fall back to -march=armv8-a in case the compiler isn't compatible 
 # with -mcpu and -mtune
 GEN_OPT_FLAGS := -g0 \
@@ -363,8 +391,10 @@ GEN_OPT_FLAGS := -g0 \
  -fmodulo-sched \
  -fmodulo-sched-allow-regmoves \
  -fivopts \
+ -fsection-anchors \
  -Wno-array-bounds \
- -fno-store-merging
+ -fno-store-merging \
+ $(FLAGS_OPTIMIZE)
  
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE    := \
@@ -401,7 +431,8 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Wno-switch-bool \
 		   -Wno-bool-operation -Wno-nonnull -Wno-switch-unreachable -Wno-format-truncation -Wno-format-overflow -Wno-duplicate-decl-specifier -Wno-memset-elt-size -Wno-int-in-bool-context \
 		   $(GEN_OPT_FLAGS) \
-		   $(GRAPHITE)
+		   $(GRAPHITE) \
+		   $(FLAGS_OPTIMIZE)
 
 KBUILD_AFLAGS_KERNEL := $(GEN_OPT_FLAGS)
 KBUILD_CFLAGS_KERNEL := $(GEN_OPT_FLAGS)
