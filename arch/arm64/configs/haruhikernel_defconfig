@@ -1,4 +1,4 @@
-CONFIG_LOCALVERSION="-custom-kernel-for-haruhirom-v8.0"
+CONFIG_LOCALVERSION="-custom-kernel-for-haruhirom-v8.1"
 CONFIG_SYSVIPC=y
 CONFIG_AUDIT=y
 CONFIG_NO_HZ=y
