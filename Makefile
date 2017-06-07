@@ -419,7 +419,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
-		   -march=armv8-a \
+		   -march=armv8-a+crypto+crc \
 		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53  \
 		   -fno-pic \
 		   -Ofast -fno-inline-functions \
