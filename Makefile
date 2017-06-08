@@ -378,7 +378,7 @@ CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 CFLAGS_MODULE   = $(GRAPHITE)
 AFLAGS_MODULE   = $(GRAPHITE)
 LDFLAGS_MODULE  = --strip-debug
-CFLAGS_KERNEL	= $(GRAPHITE) -march=armv8-a+crypto+crc -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53
+CFLAGS_KERNEL	= $(GRAPHITE) -march=armv8-a+crypto+crc -mcpu=cortex-a57.cortex-a53+crypto+crc -mtune=cortex-a57.cortex-a53
 AFLAGS_KERNEL	= $(GRAPHITE)
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
@@ -420,8 +420,8 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -march=armv8-a+crypto+crc \
-		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53  \
-		   -fno-pic \
+		   -mcpu=cortex-a57.cortex-a53+crypto+crc -mtune=cortex-a57.cortex-a53+crypto+crc  \
+		   -no-pie -fno-pic \
 		   -Ofast -fno-inline-functions \
 		   -fgcse-sm -fsched-spec-load \
 		   -fsingle-precision-constant \
