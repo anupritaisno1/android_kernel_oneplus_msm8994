@@ -47,12 +47,14 @@
 #include <linux/kernel.h>
 #include <linux/gpio.h>
 #include <sound/sounddebug.h>
+#include <linux/lcd_notify.h>
 #include "wcd9330.h"
 #include "wcd9xxx-resmgr.h"
 #include "wcd9xxx-common.h"
 #include "wcdcal-hwdep.h"
 #include "wcd_cpe_core.h"
 #include "pdesireaudio.h"
+
 
 enum {
 	VI_SENSE_1,
@@ -103,6 +105,29 @@ MODULE_PARM_DESC(cpe_debug_mode, "boot cpe in debug mode");
 
 static atomic_t kp_tomtom_priv;
 
+static struct notifier_block lcd_notifier_hook;
+static bool display_online=true;
+
+static int lcd_notifier_call(struct notifier_block *this,
+		unsigned long event, void *data)
+{
+	switch (event) {
+		case LCD_EVENT_ON_START:
+			display_online = true;
+			break;
+		case LCD_EVENT_OFF_END:
+			display_online = true;
+			break;
+		default:
+			break;
+
+	}
+
+	return 0;
+
+}
+
+
 int high_perf_mode = 1;
 module_param(high_perf_mode, int,
               S_IRUGO | S_IWUSR | S_IWGRP);
@@ -136,27 +161,27 @@ MODULE_PARM_DESC(pdesireaudio_static_mode, "Set PDesireAudio to static mode, so 
 
 void pdesireaudio_start(void) 
 {
-	if (!pdesireaudio_static_mode){
-		printk("Enable PDesireAudio");
+	if (!pdesireaudio_static_mode && display_online){
+		pr_info("Enable PDesireAudio");
 		uhqa_mode_pdesireaudio = 1;
 	}
 }
 
 void pdesireaudio_remove(void) 
 {
-	if (!pdesireaudio_static_mode){
-		printk("Disable PDesireAudio");
+	if (!pdesireaudio_static_mode && display_online){
+		pr_info("Disable PDesireAudio");
 		uhqa_mode_pdesireaudio = 0;
 	}
 } 
 
 void pdesireaudio_init(void) 
 {
-	if (!pdesireaudio_static_mode){
+	if (!pdesireaudio_static_mode && display_online){
 		bool active;
 
 
-		printk("Re-Init PDesireAudio");
+		pr_info("Re-Init PDesireAudio");
 		if (!uhqa_mode_pdesireaudio)
 			active = false;
 		else
@@ -174,10 +199,10 @@ void pdesireaudio_init(void)
 void pdesireaudio_api_static_mode_control(bool enable)
 {
 	if(enable == true) {
-		printk("Set PDesireAudio to static mode");
+		pr_info("Set PDesireAudio to static mode");
 		pdesireaudio_static_mode = 1;
 	} else {
-		printk("Set PDesireAudio to dynamic mode");
+		pr_info("Set PDesireAudio to dynamic mode");
 		pdesireaudio_static_mode = 0;
 	}
 }
@@ -1316,7 +1341,11 @@ static int tomtom_config_compander(struct snd_soc_dapm_widget *w,
 		}
 		
 		/* PDesireAudio Compander Switch */
-		if (!uhqa_mode_pdesireaudio) {
+		if (uhqa_mode_pdesireaudio) {
+			pr_debug("%s: PDesireAudio is enabled, do not enable compander\n",
+					__func__);
+			break; 
+		}
 		
 			/* Set compander Sample rate */
 			snd_soc_update_bits(codec,
@@ -1332,7 +1361,7 @@ static int tomtom_config_compander(struct snd_soc_dapm_widget *w,
 					snd_soc_update_bits(codec,
 						TOMTOM_A_CDC_COMP0_B4_CTL + (comp * 8),
 						0x80, 0x80);
-				}
+			
 			}
 			
 			/* Enable RX interpolation path compander clocks */
@@ -9446,6 +9475,9 @@ static struct platform_driver tomtom_codec_driver = {
 
 static int __init tomtom_codec_init(void)
 {
+	lcd_notifier_hook.notifier_call = lcd_notifier_call;
+	lcd_register_client(&lcd_notifier_hook);
+
 	return platform_driver_register(&tomtom_codec_driver);
 }
 
