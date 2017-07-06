@@ -23,7 +23,6 @@
 #include <linux/init.h>
 #include <linux/nmi.h>
 #include <linux/console.h>
-
 #define CREATE_TRACE_POINTS
 #include <trace/events/exception.h>
 
