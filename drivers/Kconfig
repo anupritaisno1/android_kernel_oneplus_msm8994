@@ -76,6 +76,8 @@ source "drivers/hwmon/Kconfig"
 
 source "drivers/thermal/Kconfig"
 
+source "drivers/trusty/Kconfig"
+
 source "drivers/watchdog/Kconfig"
 
 source "drivers/ssb/Kconfig"
@@ -171,8 +173,6 @@ source "drivers/pwm/Kconfig"
 source "drivers/irqchip/Kconfig"
 
 source "drivers/ipack/Kconfig"
-
-source "drivers/gud/Kconfig"
 
 source "drivers/reset/Kconfig"
 

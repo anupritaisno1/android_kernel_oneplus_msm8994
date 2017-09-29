@@ -261,6 +261,8 @@ FLAGS_OPTIMIZE := -falign-functions=32 -fgcse-las -fivopts \
 	-fmodulo-sched \
 	-fmodulo-sched-allow-regmoves \
 	-frerun-cse-after-loop \
+	-funroll-loops \
+	-ftree-vectorize \
 	-frename-registers \
 	$(GRAPHITE)
 
@@ -355,7 +357,7 @@ AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
 CC		= $(which ccache) $(CROSS_COMPILE)gcc
 LD		+= -Ofast --strip-debug
-CC		+= -Ofast
+CC		+= -Ofast $(FLAGS_OPTIMIZE) $(GRAPHITE)
 CC		+= -fmodulo-sched -fmodulo-sched-allow-regmoves
 CC		+= -fgraphite-identity -floop-block -floop-interchange -floop-strip-mine
 CC		+= -ftree-loop-linear -ftree-loop-distribution
@@ -375,11 +377,11 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-CFLAGS_MODULE   = $(GRAPHITE)
-AFLAGS_MODULE   = $(GRAPHITE)
+CFLAGS_MODULE   = $(FLAGS_OPTIMIZE) $(GRAPHITE)
+AFLAGS_MODULE   = $(FLAGS_OPTIMIZE) $(GRAPHITE)
 LDFLAGS_MODULE  = --strip-debug
-CFLAGS_KERNEL	= $(GRAPHITE) -mcpu=cortex-a57.cortex-a53+crypto+crc -mtune=cortex-a57.cortex-a53 -march=armv8-a+crypto+crc
-AFLAGS_KERNEL	= $(GRAPHITE)
+CFLAGS_KERNEL	= $(FLAGS_OPTIMIZE) $(GRAPHITE) -mcpu=cortex-a57.cortex-a53+crypto+crc -mtune=cortex-a57.cortex-a53 -march=armv8-a+crypto+crc
+AFLAGS_KERNEL	= $(FLAGS_OPTIMIZE) $(GRAPHITE)
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
 
@@ -433,6 +435,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -std=gnu89 -Wno-unused-const-variable -Wno-misleading-indentation \
            -Wno-memset-transposed-args  -Wno-bool-compare -Wno-logical-not-parentheses \
 		   -Wno-switch-bool \
+		   -Wno-multistatement-macros \
 		   -Wno-bool-operation -Wno-nonnull -Wno-switch-unreachable -Wno-format-truncation -Wno-format-overflow -Wno-duplicate-decl-specifier -Wno-memset-elt-size -Wno-int-in-bool-context \
 		   $(GEN_OPT_FLAGS) \
 		   $(GRAPHITE) \
@@ -663,8 +666,10 @@ KBUILD_CPPFLAGS += $(call cc-option, -fno-pie)
 KBUILD_CFLAGS	+= -Ofast -fno-inline-functions -fno-pic -fno-ipa-cp-clone -Wno-maybe-uninitialized
 KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
 
-include $(srctree)/arch/$(SRCARCH)/Makefile
+# Tell gcc to never replace conditional load with a non-conditional one
+KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
 
+include $(srctree)/arch/$(SRCARCH)/Makefile
 ifdef CONFIG_READABLE_ASM
 # Disable optimizations that make assembler listings hard to read.
 # reorder blocks reorders the control in the function

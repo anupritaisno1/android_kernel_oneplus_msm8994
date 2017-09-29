@@ -116,6 +116,9 @@ config ILLEGAL_POINTER_VALUE
 config LOCKDEP_SUPPORT
 	def_bool y
 
+config FIQ_GLUE
+	bool
+
 config TRACE_IRQFLAGS_SUPPORT
 	def_bool y
 
