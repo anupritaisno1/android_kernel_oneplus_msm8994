@@ -1,0 +1,13 @@
+# this is a bridge to spectrum
+# Power saving profile
+on property:fku.perf.profile=0
+    setprop persist.spectrum.profile 2
+
+# Balance (FK defaults)
+on property:fku.perf.profile=1
+    setprop persist.spectrum.profile 0
+
+# Performance
+on property:fku.perf.profile=2
+## spectrum has a performance profile but according to the stuff franco said in his app, GPU has to run at max. That can only happen with the Gaming profile and not performance
+    setprop persist.spectrum.profile 3

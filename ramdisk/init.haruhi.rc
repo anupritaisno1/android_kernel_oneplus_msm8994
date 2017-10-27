@@ -1,0 +1,69 @@
+# Copyright (C) 2017 Tristan Marsell (tristan.marsell@t-online.de). All rights reserved.
+# Copyright (C) 2017 Team DevElite. All rights reserved.
+# Copyright (C) 2017 anupritaisno1. All rights reserved.
+on property:dev.bootcomplete=1
+chown system system /sys/devices/platform/kcal_ctrl.0/kcal
+chown system system /sys/devices/platform/kcal_ctrl.0/kcal_cont
+chown system system /sys/devices/platform/kcal_ctrl.0/kcal_hue
+chown system system /sys/devices/platform/kcal_ctrl.0/kcal_invert
+chown system system /sys/devices/platform/kcal_ctrl.0/kcal_sat
+chown system system /sys/devices/platform/kcal_ctrl.0/kcal_val
+chmod 0664 /sys/devices/platform/kcal_ctrl.0/kcal
+chmod 0664 /sys/devices/platform/kcal_ctrl.0/kcal_cont
+chmod 0664 /sys/devices/platform/kcal_ctrl.0/kcal_hue
+chmod 0664 /sys/devices/platform/kcal_ctrl.0/kcal_invert
+chmod 0664 /sys/devices/platform/kcal_ctrl.0/kcal_sat
+chmod 0664 /sys/devices/platform/kcal_ctrl.0/kcal_val
+chown system system /sys/class/devfreq/fdb00000.qcom,kgsl-3d0/governor
+chown system system /sys/class/devfreq/fdb00000.qcom,kgsl-3d0/max_freq
+chown system system /sys/class/devfreq/fdb00000.qcom,kgsl-3d0/min_freq
+chmod 0664 /sys/class/devfreq/fdb00000.qcom,kgsl-3d0/governor
+chmod 0664 /sys/class/devfreq/fdb00000.qcom,kgsl-3d0/max_freq
+chmod 0664 /sys/class/devfreq/fdb00000.qcom,kgsl-3d0/min_freq
+chown system system /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+chown system system /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
+chown system system /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+chown system system /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
+chown system system /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+chown system system /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor
+chmod 0664 /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+chmod 0664 /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
+chmod 0664 /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+chmod 0664 /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
+chmod 0664 /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+chmod 0664 /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor
+write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ondemand
+write /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor ondemand
+
+# Fauxsound Callibrations
+write /sys/kernel/sound_control_3/gpl_headphone_gain '252 252 7'
+write /sys/kernel/sound_control_3/gpl_headphone_gain '252 252'
+write /sys/kernel/sound_control_3/gpl_headphone_pa_gain '32 32 191'
+write /sys/kernel/sound_control_3/gpl_headphone_pa_gain '32 32'
+# disable lpa
+setprop lpa.decode false
+setprop lpa.releaselock false
+setprop lpa.use-stagefright false
+setprop tunnel.decode false
+setprop tunnel.audio.decode false
+
+# increase buffer
+setprop audio.offload.buffer.size.kb 1024
+
+# calibrate display
+write /sys/devices/platform/kcal_ctrl.0/kcal "256 250 241"
+write /sys/devices/platform/kcal_ctrl.0/kcal_cont 256
+write /sys/devices/platform/kcal_ctrl.0/kcal_hue 1
+write /sys/devices/platform/kcal_ctrl.0/kcal_invert 0
+write /sys/devices/platform/kcal_ctrl.0/kcal_min 35
+write /sys/devices/platform/kcal_ctrl.0/kcal_sat 260
+write /sys/devices/platform/kcal_ctrl.0/kcal_val 252
+
+# turn off core_ctl
+write /sys/module/msm_thermal/core_control/enabled "0"
+
+# bring up all cores
+write /sys/devices/system/cpu/cpu4/online 1
+write /sys/devices/system/cpu/cpu5/online 1
+write /sys/devices/system/cpu/cpu6/online 1
+write /sys/devices/system/cpu/cpu7/online 1 
