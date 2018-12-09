@@ -429,7 +429,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -no-pie -fno-pic \
 		   -Ofast -finline-functions \
 		   -fgcse-sm -fsched-spec-load -fsched-pressure \
-		   -fdeclone-ctor-dtor -fira-hoist-pressure \
+		   -fira-hoist-pressure \
 		   -fsingle-precision-constant \
 		   -fno-delete-null-pointer-checks \
 		   -std=gnu89 -Wno-unused-const-variable -Wno-misleading-indentation \
