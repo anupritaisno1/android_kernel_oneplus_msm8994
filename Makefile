@@ -425,6 +425,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -mcpu=cortex-a57.cortex-a53+crypto+crc+fp+simd -mtune=cortex-a57.cortex-a53+crypto+crc+fp+simd  \
+		   --param l1-cache-line-size=64 --param l1-cache-size=32 --param l2-cache-size=512 \
 		   -march=armv8-a+crypto+crc+fp+simd \
 		   -no-pie -fno-pic \
 		   -Ofast -finline-functions \
